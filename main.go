@@ -223,7 +223,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 	//fmt.Println(pass)
 	e = clipboard.WriteAll(pass)
 	if e != nil {
-		fmt.Println("Failed to copy password to clipboard")
+		fmt.Println("Failed to copy password to clipboard: ", e)
 		return subcommands.ExitFailure
 	}
 	fmt.Printf("Pass for %s copied to clipboard\n", g.site)
