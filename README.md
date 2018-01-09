@@ -12,7 +12,7 @@ Under following assumptions or limitations
 
 * Trust Go standard library
 * No GUI
-* Only work with GnuPG 2.0 / 1.4 generated keyring files (PGP format; GnuPG 2.1 uses .kbx gpgsm format)
+* Only work with GnuPG 2.0 / 1.4 generated keyring files (PGP format; GnuPG 2.1 uses .kbx gpgsm format) -> Workaround below
 * [It's a hustle working on gpgsm format](https://github.com/kubernetes/helm/issues/1592)
 * [on gpg-agent error of pinentry](https://wiki.archlinuxjp.org/index.php/GnuPG#gpg-agent)
 
@@ -36,6 +36,20 @@ $ go install
 # LICENSE
 
 GPL version 3
+
+# Workaround on later GnuPG key format
+
+GnuPG >= 2.2 has a new secret key format instead of `$HOME/.gnupg/secring.gpg`,
+while baccounts still reads secret keys from it. But GnuPG supports exporting
+secret key to old format, like:
+
+```sh
+$ gpg --export-secret-keys xxxxxx > ~/.gnupg/pubring.gpg
+```
+
+- [export-secret-keys](https://www.gnupg.org/gph/en/manual/r887.html)
+- [Removal of the secret keyring](https://www.gnupg.org/faq/whats-new-in-2.1.html#nosecring)
+- [Secring does not exist anymore with the latest gnuPG version](https://github.com/jcmdev0/gpgagent/issues/2#issuecomment-306054405)
 
 # TODO
 
