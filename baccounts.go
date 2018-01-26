@@ -112,7 +112,7 @@ func (b *Baccount) show(site Site) subcommands.ExitStatus {
 		fmt.Println("Failed to copy password to clipboard: ", e)
 		return subcommands.ExitFailure
 	}
-	fmt.Printf("Pass for %s copied to clipboard\n", site.Url)
+	fmt.Printf("Pass for %s (%s) copied to clipboard\n", site.Url, site.Name)
 	return subcommands.ExitSuccess
 
 }

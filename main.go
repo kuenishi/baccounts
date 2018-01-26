@@ -214,7 +214,8 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 			if strings.Contains(host, word) {
 				count += 1
 				one_site = site
-				fmt.Printf("Match: %s\n", site.Url)
+				url := strings.Replace(site.Url, word, "\x1b[31m"+word+"\x1b[0m", -1)
+				fmt.Printf("Match: %s\n", url)
 			}
 		}
 		if count > 1 {
@@ -224,7 +225,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 			fmt.Printf("No site matching '%s' found", word)
 			return subcommands.ExitFailure
 		} else {
-			fmt.Printf("One site matched: for %s\n", one_site.Name)
+			fmt.Printf("One site matched for %s\n", one_site.Name)
 			return b.show(one_site)
 		}
 	}
