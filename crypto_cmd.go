@@ -72,7 +72,7 @@ func (g *listKeysCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface
 
 type exportCmd struct {
 	file string
-	key int
+	key  int
 }
 
 func (*exportCmd) Name() string {
@@ -122,7 +122,7 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		profiles = append(profiles, profile)
 	}
 	c := &Baccount{profiles, b.DefaultMail, b.Version}
-	
+
 	err := c.save(g.file)
 	if err != nil {
 		fmt.Println("Failed to save to", g.file)

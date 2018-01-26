@@ -4,14 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/google/subcommands"
 	"os"
 
 	"crypto/rand"
 	"math/big"
 	"net/url"
+	"strings"
 
-	"github.com/atotto/clipboard"
+	"github.com/google/subcommands"
 )
 
 var coder = NewCoder()
@@ -177,13 +177,14 @@ func (*showCmd) Synopsis() string {
 	return "Show password for the site"
 }
 func (*showCmd) Usage() string {
-	return `show --site example.com --mail mail --name name
+	return `show -site example.com -mail mail -name name
 `
 }
 func (g *showCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.site, "site", "example.com", "Site name of the acc")
 	f.StringVar(&g.name, "name", defaultName, "Profile")
 }
+
 func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
 	var b = (argv[0]).(*Baccount)
@@ -192,19 +193,40 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		fmt.Println("Site lacking")
 		return subcommands.ExitFailure
 	}
+
+	p, e := b.GetProfile(g.name)
+	if e != nil {
+		fmt.Println("Cannot get profile:", e)
+		return subcommands.ExitFailure
+	}
+
 	u, e := url.Parse(g.site)
 	if e != nil {
-		fmt.Println("Cannot parse URL:", e, g.site)
+		fmt.Println("Cannot parse URL", g.site, "as an URL:", e)
 		return subcommands.ExitFailure
 	}
 	if u.Host == "" {
-		fmt.Printf("Hostname for %s is empty: '%s'\n", g.site, u.Host)
-		return subcommands.ExitFailure
-	}
-	p, e := b.GetProfile(g.name)
-	if e != nil {
-		fmt.Println("Error:", e)
-		return subcommands.ExitFailure
+		var word = g.site
+
+		var count = 0
+		var one_site = Site{}
+		for host, site := range p.Sites {
+			if strings.Contains(host, word) {
+				count += 1
+				one_site = site
+				fmt.Printf("Match: %s\n", site.Url)
+			}
+		}
+		if count > 1 {
+			fmt.Printf("%d, more than 2 site matched for keyword '%s'\n", count, word)
+			return subcommands.ExitFailure
+		} else if count == 0 {
+			fmt.Printf("No site matching '%s' found", word)
+			return subcommands.ExitFailure
+		} else {
+			fmt.Printf("One site matched: for %s\n", one_site.Name)
+			return b.show(one_site)
+		}
 	}
 
 	site, ok := p.Sites[u.Host]
@@ -212,22 +234,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		fmt.Println("site not found:", u.Host, p.Sites)
 		return subcommands.ExitFailure
 	}
-	coder.setPassphrase()
-	pass, err := coder.decode(site.EncodedPass)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return subcommands.ExitFailure
-	}
-	//fmt.Println(acc.Sites[g.site])
-	//
-	//fmt.Println(pass)
-	e = clipboard.WriteAll(pass)
-	if e != nil {
-		fmt.Println("Failed to copy password to clipboard: ", e)
-		return subcommands.ExitFailure
-	}
-	fmt.Printf("Pass for %s copied to clipboard\n", g.site)
-	return subcommands.ExitSuccess
+	return b.show(site)
 }
 
 type setDefaultCmd struct {

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/atotto/clipboard"
+	"github.com/google/subcommands"
 )
 
 type Site struct {
@@ -94,6 +97,24 @@ func (b *Baccount) save(file string) error {
 		return err
 	}
 	return ioutil.WriteFile(file, []byte(json), 0600)
+}
+
+func (b *Baccount) show(site Site) subcommands.ExitStatus {
+	coder.setPassphrase()
+	pass, err := coder.decode(site.EncodedPass)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return subcommands.ExitFailure
+	}
+
+	e := clipboard.WriteAll(pass)
+	if e != nil {
+		fmt.Println("Failed to copy password to clipboard: ", e)
+		return subcommands.ExitFailure
+	}
+	fmt.Printf("Pass for %s copied to clipboard\n", site.Url)
+	return subcommands.ExitSuccess
+
 }
 
 func LoadKeys(datafile string) (*Baccount, error) {
