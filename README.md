@@ -13,7 +13,6 @@ Under following assumptions or limitations
 * Trust Go standard library
 * No GUI
 * Only work with GnuPG 2.0 / 1.4 generated keyring files (PGP format; GnuPG 2.1 uses .kbx gpgsm format) -> Workaround below
-* [It's a hustle working on gpgsm format](https://github.com/kubernetes/helm/issues/1592)
 * [on gpg-agent error of pinentry](https://wiki.archlinuxjp.org/index.php/GnuPG#gpg-agent)
 
 # Build and install
@@ -32,6 +31,7 @@ $ go install
 * [pass](https://www.passwordstore.org/)
 * KeePass
 * 1Password
+* [Bitwarden](https://bitwarden.com/) whose [CLI version](https://github.com/bitwarden/cli) will override this product
 
 # LICENSE
 
@@ -39,12 +39,15 @@ GPL version 3
 
 # Workaround on later GnuPG key format
 
-GnuPG >= 2.2 has a new secret key format instead of `$HOME/.gnupg/secring.gpg`,
-while baccounts still reads secret keys from it. But GnuPG supports exporting
-secret key to old format, like:
+GnuPG >= 2.2 has a new public and secret key format instead of
+`$HOME/.gnupg/pubring.gpg` and `$HOME/.gnupg/secring.gpg`, while
+baccounts still reads secret keys from it (This is because Go openpgp
+module only supports PGP compatible format). But GnuPG supports
+exporting secret key to old format, like:
 
 ```sh
-$ gpg --export-secret-keys xxxxxx > ~/.gnupg/pubring.gpg
+$ gpg --export > ~/.gnupg/pubring.gpg
+$ gpg --export-secret-keys > ~/.gnupg/secring.gpg
 ```
 
 - [export-secret-keys](https://www.gnupg.org/gph/en/manual/r887.html)
@@ -59,6 +62,5 @@ $ gpg --export-secret-keys xxxxxx > ~/.gnupg/pubring.gpg
 
 # Test keys
 
-* kuenishi@example.com - baccounts
 * kuenishi@example.com - baccounts
 * test@example.com - test2
