@@ -10,7 +10,7 @@ func TestEnc(t *testing.T) {
 
 	s := "simple secret word?"
 
-	encStr, e := coder.encode(s)
+	encStr, e := coder.encode(s, 0)
 
 	if e != nil {
 		t.Fatal("Error:", e)

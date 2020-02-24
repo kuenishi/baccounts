@@ -38,7 +38,7 @@ func (g *testCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) 
 		return subcommands.ExitFailure
 	}
 	if decoded != msg {
-		fmt.Println("%s != %s\n", msg, decoded)
+		fmt.Printf("%s != %s\n", msg, decoded)
 		return subcommands.ExitFailure
 	}
 	fmt.Println(" =>", decoded)

@@ -117,6 +117,16 @@ func (b *Baccount) show(site Site) subcommands.ExitStatus {
 
 }
 
+func LoadKeysFromJson(js string) (*Baccount, error) {
+	var b Baccount
+	err := json.Unmarshal([]byte(js), &b)
+	if err != nil {
+		fmt.Printf("Invalid format: %v\n", err)
+		return nil, err
+	}
+	return &b, nil
+}
+
 func LoadKeys(datafile string) (*Baccount, error) {
 	file, err := os.Open(datafile)
 	if err != nil {
@@ -130,13 +140,5 @@ func LoadKeys(datafile string) (*Baccount, error) {
 	if err != nil {
 		fmt.Printf("no content")
 	}
-	fmt.Printf("datafile: %v\n", datafile)
-
-	var b Baccount
-	err = json.Unmarshal(bytes, &b)
-	if err != nil {
-		fmt.Printf("Invalid format (%s): %v\n", datafile, err)
-		return nil, err
-	}
-	return &b, nil
+	return LoadKeysFromJson(string(bytes))
 }
