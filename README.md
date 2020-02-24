@@ -18,11 +18,7 @@ Under following assumptions or limitations
 # Build and install
 
 ```sh
-$ git clone git://github.com/kuenishi/baccounts
-$ cd baccounts
-$ go get
-$ go build
-$ go install
+$ go install github.com/kuenishi/baccounts
 ```
 
 # Related Products
