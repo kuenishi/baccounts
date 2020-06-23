@@ -14,7 +14,6 @@ import (
 	"github.com/google/subcommands"
 )
 
-var coder = NewCoder()
 var defaultMail = "who@example.com"
 var defaultName = "john smith"
 
@@ -147,6 +146,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 
 	fmt.Println(string(bytes))
 
+	coder := NewCoder()
 	// TODO: check we already have same site
 	encpass, err := coder.Encode(string(bytes), 0)
 
