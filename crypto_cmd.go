@@ -95,7 +95,7 @@ func (g *exportCmd) SetFlags(f *flag.FlagSet) {
 }
 func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 
 	if g.file == datafile {
@@ -112,10 +112,10 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 	// Get public key entity from public keyring and encrypt with it
 	coder.SetPassphrase()
 
-	profiles := make([]*Profile, 0)
+	profiles := make([]*baccounts.Profile, 0)
 	for _, p := range b.Profiles {
 		fmt.Println(p.Name)
-		profile := NewProfile(p.Name, p.Default)
+		profile := baccounts.NewProfile(p.Name, p.Default)
 		for key := range p.Sites {
 			site := p.Sites[key]
 			u, _ := url.Parse(site.Url)
@@ -126,9 +126,9 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		}
 		profiles = append(profiles, profile)
 	}
-	c := &Baccount{profiles, b.DefaultMail, b.Version}
+	c := &baccounts.Baccount{profiles, b.DefaultMail, b.Version}
 
-	err := c.save(g.file)
+	err := c.Save(g.file)
 	if err != nil {
 		fmt.Println("Failed to save to", g.file)
 		return subcommands.ExitFailure

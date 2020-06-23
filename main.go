@@ -33,7 +33,7 @@ func (*listCmd) Usage() string {
 func (l *listCmd) SetFlags(f *flag.FlagSet) {
 }
 func (l *listCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 	fmt.Println("default mail:", b.DefaultMail)
 	for _, acc := range b.Profiles {
 		fmt.Printf("%s default=%v\n", acc.Name, acc.Default)
@@ -63,7 +63,7 @@ func (a *addProfileCmd) SetFlags(f *flag.FlagSet) {
 }
 func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 
 	if a.name == defaultName {
@@ -79,9 +79,9 @@ func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 
 	fmt.Println("Adding a profile:", a.name)
 	dflt := (len(b.Profiles) == 0)
-	b.Profiles = append(b.Profiles, NewProfile(a.name, dflt))
+	b.Profiles = append(b.Profiles, baccounts.NewProfile(a.name, dflt))
 
-	b.updateConfigFile(datafile)
+	b.UpdateConfigFile(datafile)
 	return subcommands.ExitSuccess
 }
 
@@ -111,7 +111,7 @@ func (g *generateCmd) SetFlags(f *flag.FlagSet) {
 }
 func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 	fmt.Printf("Generate profiles: %s @ %s\n", g.name, g.url)
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 
 	if g.url == "https://example.com" {
@@ -162,7 +162,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 		return subcommands.ExitFailure
 	}
 
-	b.updateConfigFile(datafile)
+	b.UpdateConfigFile(datafile)
 	return subcommands.ExitSuccess
 }
 
@@ -188,7 +188,7 @@ func (g *showCmd) SetFlags(f *flag.FlagSet) {
 
 func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 
 	if g.site == "example.com" {
 		fmt.Println("Site lacking")
@@ -210,7 +210,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		var word = g.site
 
 		var count = 0
-		var one_site = Site{}
+		var one_site = baccounts.Site{}
 		for host, site := range p.Sites {
 			if strings.Contains(host, word) {
 				count += 1
@@ -227,7 +227,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 			return subcommands.ExitFailure
 		} else {
 			fmt.Printf("One site matched for %s\n", one_site.Name)
-			return b.show(one_site)
+			return b.Show(one_site)
 		}
 	}
 
@@ -236,7 +236,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		fmt.Println("site not found:", u.Host, p.Sites)
 		return subcommands.ExitFailure
 	}
-	return b.show(site)
+	return b.Show(site)
 }
 
 type setDefaultCmd struct {
@@ -257,7 +257,7 @@ func (g *setDefaultCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.name, "name", defaultName, "Profile name to set default")
 }
 func (g *setDefaultCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
-	var b = (argv[0]).(*Baccount)
+	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 
 	p, e := b.GetProfile(g.name)
@@ -271,7 +271,7 @@ func (g *setDefaultCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 	}
 
 	p.SetDefault(true)
-	b.updateConfigFile(datafile)
+	b.UpdateConfigFile(datafile)
 
 	fmt.Println("Set default:", p.Name, p.Default)
 	return subcommands.ExitSuccess
@@ -279,9 +279,10 @@ func (g *setDefaultCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 
 func main() {
 	datafile := os.ExpandEnv("$HOME/.baccounts")
-	b, _ := LoadKeys(datafile)
-	if b != nil {
-		fmt.Printf("baccounts version %s - data file version: %s\n", version, b.Version)
+	b, err := baccounts.LoadKeys(datafile)
+	if err != nil {
+		fmt.Printf("baccounts version %s - data file version: %s\n", baccounts.Version, b.Version)
+		return
 	}
 
 	subcommands.Register(subcommands.HelpCommand(), "meta")

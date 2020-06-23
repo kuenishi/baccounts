@@ -1,4 +1,4 @@
-package main
+package baccounts
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/google/subcommands"
-	"github.com/kuenishi/baccounts/pkg"
 )
 
 type Site struct {
@@ -43,7 +42,7 @@ func (profile *Profile) SetDefault(b bool) {
 	profile.Default = b
 }
 
-var version = "0.1.0-SNAPSHOT"
+const Version = "0.1.0-SNAPSHOT"
 
 type Baccount struct {
 	Profiles    []*Profile
@@ -61,7 +60,7 @@ func (b *Baccount) GetDefault() (*Profile, error) {
 }
 
 func (b *Baccount) GetProfile(name string) (*Profile, error) {
-	if name == defaultName {
+	if name == "" {
 		return b.GetDefault()
 	}
 	fmt.Println("profiles:", len(b.Profiles), name)
@@ -81,9 +80,9 @@ func (b *Baccount) toJson() (string, error) {
 	return string(j), nil
 }
 
-func (b *Baccount) updateConfigFile(dest string) error {
+func (b *Baccount) UpdateConfigFile(dest string) error {
 	tmpfile := os.ExpandEnv("$HOME/.baccounts-temp")
-	b.save(tmpfile)
+	b.Save(tmpfile)
 	e := os.Rename(tmpfile, dest)
 	if e != nil {
 		fmt.Printf("Error on saving profiles: %v\n", e)
@@ -92,7 +91,7 @@ func (b *Baccount) updateConfigFile(dest string) error {
 	return nil
 }
 
-func (b *Baccount) save(file string) error {
+func (b *Baccount) Save(file string) error {
 	json, err := b.toJson()
 	if err != nil {
 		return err
@@ -100,8 +99,8 @@ func (b *Baccount) save(file string) error {
 	return ioutil.WriteFile(file, []byte(json), 0600)
 }
 
-func (b *Baccount) show(site Site) subcommands.ExitStatus {
-	coder := baccounts.NewCoder()
+func (b *Baccount) Show(site Site) subcommands.ExitStatus {
+	coder := NewCoder()
 	coder.SetPassphrase()
 	pass, err := coder.Decode(site.EncodedPass)
 	if err != nil {

@@ -1,4 +1,4 @@
-package main
+package baccounts
 
 import (
 	"encoding/json"
