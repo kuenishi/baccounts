@@ -34,14 +34,23 @@ func (coder *Coder) SecretKeyringFile() string {
 	return coder.gpgDir + "secring.gpg"
 }
 
-func (coder *Coder) SetPassphrase() {
-	fmt.Printf("Passphrase of your GPG key:")
+func ReadPassword(msg string) (string, error) {
+	fmt.Printf(msg)
 	bytes, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	if err != nil {
-		log.Fatal("Can't read password:", err)
+		fmt.Printf("Can't read password: %v\n", err)
+		return "", err
 	}
-	coder.passphrase = string(bytes)
+	return string(bytes), nil
+}
+
+func (coder *Coder) SetPassphrase() {
+	pass, err := ReadPassword("Passphrase of your GPG key:")
+	if err != nil {
+		log.Fatalf("Can't read password: %v", err)
+	}
+	coder.passphrase = pass
 }
 
 func (coder *Coder) HasPubKey(id int) bool {

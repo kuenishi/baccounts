@@ -89,18 +89,22 @@ func (*updateCmd) Synopsis() string {
 	return "Update password for the site"
 }
 func (*updateCmd) Usage() string {
-	return `generate -name name -mail mail -new newpassword
+	return `generate -name name -site site
 `
 }
 func (g *updateCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.site, "site", "", "Profile of the site (required)")
 	f.StringVar(&g.name, "name", "", "Profile name")
-	f.StringVar(&g.new, "new", "", "New Password (required)")
 }
 func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 	fmt.Printf("Update profile: %s @ %s\n", g.name, g.site)
 	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
+
+	if g.site == "" {
+		fmt.Println("-site cannot be empty")
+		return subcommands.ExitFailure
+	}
 
 	p, e := b.GetProfile(g.name)
 	if e != nil {
@@ -108,19 +112,26 @@ func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		return subcommands.ExitFailure
 	}
 
-	if len(g.new) < 8 {
-		fmt.Printf("New password should be longer than 8 chars (%d)\n", len(g.new))
+	pass, err := baccounts.ReadPassword("New Password: ")
+	if err != nil {
+		return subcommands.ExitFailure
+	}
+	pass2, err := baccounts.ReadPassword("Input Again: ")
+	if err != nil {
+		return subcommands.ExitFailure
+	}
+	if pass != pass2 {
+		fmt.Printf("Password inputs don't match.\n")
 		return subcommands.ExitFailure
 	}
 
-	if g.site == "" {
-		fmt.Println("-site cannot be empty")
+	if len(pass) < 8 {
+		fmt.Printf("New password should be longer than 8 chars (%d)\n", len(pass))
 		return subcommands.ExitFailure
 	}
-	// TODO: check we already have same site
 
 	coder := baccounts.NewCoder()
-	encpass, err := coder.Encode(g.new, 0)
+	encpass, err := coder.Encode(pass, 0)
 	if err != nil {
 		fmt.Println("Can't encode pass:", err)
 		return subcommands.ExitFailure
@@ -131,7 +142,7 @@ func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		return subcommands.ExitFailure
 	}
 	b.UpdateConfigFile(datafile)
-
+	fmt.Println("Password successfully updated.")
 	return subcommands.ExitSuccess
 }
 
