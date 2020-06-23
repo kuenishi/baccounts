@@ -148,7 +148,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 	fmt.Println(string(bytes))
 
 	// TODO: check we already have same site
-	encpass, err := coder.encode(string(bytes), 0)
+	encpass, err := coder.Encode(string(bytes), 0)
 
 	if err != nil {
 		fmt.Println("Can't decode pass:", err)

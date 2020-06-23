@@ -27,7 +27,7 @@ func NewCoder() *Coder {
 	return &Coder{os.ExpandEnv("$HOME/.gnupg/"), "null"}
 }
 
-func (coder *Coder) setPassphrase() {
+func (coder *Coder) SetPassphrase() {
 	fmt.Printf("Passphrase of your GPG key:")
 	bytes, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
@@ -37,7 +37,7 @@ func (coder *Coder) setPassphrase() {
 	coder.passphrase = string(bytes)
 }
 
-func (coder *Coder) hasPubKey(id int) bool {
+func (coder *Coder) HasPubKey(id int) bool {
 	publicKeyring := coder.gpgDir + "pubring.gpg"
 	fmt.Println("Public keyring:", publicKeyring)
 
@@ -49,7 +49,7 @@ func (coder *Coder) hasPubKey(id int) bool {
 	}
 	return (id > 0 && len(entityList) > id)
 }
-func (coder *Coder) encode(txt string, id int) (string, error) {
+func (coder *Coder) Encode(txt string, id int) (string, error) {
 	//publicKeyring := os.ExpandEnv("$HOME/.gnupg/pubring.gpg")
 	//publicKeyring := "./keys/pubring.gpg"
 	publicKeyring := coder.gpgDir + "pubring.gpg"
@@ -82,7 +82,7 @@ func (coder *Coder) encode(txt string, id int) (string, error) {
 	return encStr, nil
 }
 
-func (coder *Coder) decode(txt string) (string, error) {
+func (coder *Coder) Decode(txt string) (string, error) {
 	//secretKeyring := os.ExpandEnv("$HOME/.gnupg/secring.gpg")
 	// secretKeyring := "./keys/secring.gpg"
 	secretKeyring := coder.gpgDir + "secring.gpg"

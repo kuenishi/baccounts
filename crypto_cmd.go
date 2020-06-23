@@ -25,14 +25,14 @@ func (g *testCmd) SetFlags(f *flag.FlagSet) {
 }
 func (g *testCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	msg := "you huh?"
-	enc, err := coder.encode(msg, 0)
+	enc, err := coder.Encode(msg, 0)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return subcommands.ExitFailure
 	}
 	fmt.Printf("%s\n => %s\n", msg, enc)
-	coder.setPassphrase()
-	decoded, err := coder.decode(enc)
+	coder.SetPassphrase()
+	decoded, err := coder.Decode(enc)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return subcommands.ExitFailure
@@ -97,7 +97,7 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 	if g.file == datafile {
 		fmt.Println("No datafile destination: using STDOUT instead")
 	}
-	if !coder.hasPubKey(g.key) {
+	if !coder.HasPubKey(g.key) {
 		fmt.Println("Invalid key selection")
 		return subcommands.ExitFailure
 	}
@@ -105,7 +105,7 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 	fmt.Printf("Exporting to %s with key id = %d\n", g.file, g.key)
 
 	// Get public key entity from public keyring and encrypt with it
-	coder.setPassphrase()
+	coder.SetPassphrase()
 
 	profiles := make([]*Profile, 0)
 	for _, p := range b.Profiles {
@@ -114,8 +114,8 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		for key := range p.Sites {
 			site := p.Sites[key]
 			u, _ := url.Parse(site.Url)
-			pass, _ := coder.decode(site.EncodedPass)
-			new, _ := coder.encode(pass, g.key)
+			pass, _ := coder.Decode(site.EncodedPass)
+			new, _ := coder.Encode(pass, g.key)
 			fmt.Printf("%s => %s\n", site.EncodedPass, new)
 			profile.AddSite(u.Host, site.Url, site.Name, new, site.Mail)
 		}

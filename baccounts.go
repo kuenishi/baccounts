@@ -100,8 +100,8 @@ func (b *Baccount) save(file string) error {
 }
 
 func (b *Baccount) show(site Site) subcommands.ExitStatus {
-	coder.setPassphrase()
-	pass, err := coder.decode(site.EncodedPass)
+	coder.SetPassphrase()
+	pass, err := coder.Decode(site.EncodedPass)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return subcommands.ExitFailure
