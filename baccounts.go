@@ -43,7 +43,7 @@ func (profile *Profile) SetDefault(b bool) {
 	profile.Default = b
 }
 
-var version = "0.0.1-SNAPSHOT"
+var version = "0.1.0-SNAPSHOT"
 
 type Baccount struct {
 	Profiles    []*Profile
