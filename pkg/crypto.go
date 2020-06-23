@@ -1,4 +1,4 @@
-package main
+package baccounts
 
 import (
 	"bytes"
@@ -20,11 +20,18 @@ type Coder struct {
 }
 
 func NewTestCoder() *Coder {
-	return &Coder{"./keys/", "baccounts"}
+	return &Coder{"../keys/", "baccounts"}
 }
 
 func NewCoder() *Coder {
 	return &Coder{os.ExpandEnv("$HOME/.gnupg/"), "null"}
+}
+
+func (coder *Coder) PublicKeyringFile() string {
+	return coder.gpgDir + "pubring.gpg"
+}
+func (coder *Coder) SecretKeyringFile() string {
+	return coder.gpgDir + "secring.gpg"
 }
 
 func (coder *Coder) SetPassphrase() {

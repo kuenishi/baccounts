@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/subcommands"
+	"github.com/kuenishi/baccounts/pkg"
 )
 
 var defaultMail = "who@example.com"
@@ -146,7 +147,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 
 	fmt.Println(string(bytes))
 
-	coder := NewCoder()
+	coder := baccounts.NewCoder()
 	// TODO: check we already have same site
 	encpass, err := coder.Encode(string(bytes), 0)
 

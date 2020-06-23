@@ -9,6 +9,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/google/subcommands"
+	"github.com/kuenishi/baccounts/pkg"
 )
 
 type Site struct {
@@ -100,7 +101,7 @@ func (b *Baccount) save(file string) error {
 }
 
 func (b *Baccount) show(site Site) subcommands.ExitStatus {
-	coder := NewCoder()
+	coder := baccounts.NewCoder()
 	coder.SetPassphrase()
 	pass, err := coder.Decode(site.EncodedPass)
 	if err != nil {

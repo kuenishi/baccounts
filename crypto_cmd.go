@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/google/subcommands"
 	"net/url"
+
+	"github.com/kuenishi/baccounts/pkg"
 )
 
 type testCmd struct {
@@ -25,7 +27,7 @@ func (g *testCmd) SetFlags(f *flag.FlagSet) {
 }
 func (g *testCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	msg := "you huh?"
-	coder := NewCoder()
+	coder := baccounts.NewCoder()
 	enc, err := coder.Encode(msg, 0)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -62,13 +64,13 @@ func (*listKeysCmd) Usage() string {
 func (g *listKeysCmd) SetFlags(f *flag.FlagSet) {
 }
 func (g *listKeysCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
-	coder := NewCoder()
-	publicKeyring := coder.gpgDir + "pubring.gpg"
-	secretKeyring := coder.gpgDir + "secring.gpg"
+	coder := baccounts.NewCoder()
+	publicKeyring := coder.PublicKeyringFile()
+	secretKeyring := coder.SecretKeyringFile()
 	fmt.Println("Public Keyring:", publicKeyring)
-	ShowKeys(publicKeyring)
+	baccounts.ShowKeys(publicKeyring)
 	fmt.Println("Secret Keyring:", secretKeyring)
-	ShowKeys(secretKeyring)
+	baccounts.ShowKeys(secretKeyring)
 	return subcommands.ExitSuccess
 }
 
@@ -99,7 +101,7 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 	if g.file == datafile {
 		fmt.Println("No datafile destination: using STDOUT instead")
 	}
-	coder := NewCoder()
+	coder := baccounts.NewCoder()
 	if !coder.HasPubKey(g.key) {
 		fmt.Println("Invalid key selection")
 		return subcommands.ExitFailure
