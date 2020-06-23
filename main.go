@@ -9,14 +9,10 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/url"
-	"strings"
 
 	"github.com/google/subcommands"
 	"github.com/kuenishi/baccounts/pkg"
 )
-
-var defaultMail = "who@example.com"
-var defaultName = "john smith"
 
 type listCmd struct {
 }
@@ -59,17 +55,12 @@ func (*addProfileCmd) Usage() string {
 `
 }
 func (a *addProfileCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&a.name, "name", defaultName, "Name of a new profile")
+	f.StringVar(&a.name, "name", "", "Name of a new profile")
 }
 func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
 	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
-
-	if a.name == defaultName {
-		fmt.Println("No name provided")
-		return subcommands.ExitFailure
-	}
 
 	p, e := b.GetProfile(a.name)
 	if p != nil || e == nil {
@@ -82,6 +73,65 @@ func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 	b.Profiles = append(b.Profiles, baccounts.NewProfile(a.name, dflt))
 
 	b.UpdateConfigFile(datafile)
+	return subcommands.ExitSuccess
+}
+
+type updateCmd struct {
+	site string
+	name string
+	new  string
+}
+
+func (*updateCmd) Name() string {
+	return "update"
+}
+func (*updateCmd) Synopsis() string {
+	return "Update password for the site"
+}
+func (*updateCmd) Usage() string {
+	return `generate -name name -mail mail -new newpassword
+`
+}
+func (g *updateCmd) SetFlags(f *flag.FlagSet) {
+	f.StringVar(&g.site, "site", "", "Profile of the site (required)")
+	f.StringVar(&g.name, "name", "", "Profile name")
+	f.StringVar(&g.new, "new", "", "New Password (required)")
+}
+func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
+	fmt.Printf("Update profile: %s @ %s\n", g.name, g.site)
+	var b = (argv[0]).(*baccounts.Baccount)
+	var datafile = (argv[1]).(string)
+
+	p, e := b.GetProfile(g.name)
+	if e != nil {
+		fmt.Println("Error:", e)
+		return subcommands.ExitFailure
+	}
+
+	if len(g.new) < 8 {
+		fmt.Printf("New password should be longer than 8 chars (%d)\n", len(g.new))
+		return subcommands.ExitFailure
+	}
+
+	if g.site == "" {
+		fmt.Println("-site cannot be empty")
+		return subcommands.ExitFailure
+	}
+	// TODO: check we already have same site
+
+	coder := baccounts.NewCoder()
+	encpass, err := coder.Encode(g.new, 0)
+	if err != nil {
+		fmt.Println("Can't encode pass:", err)
+		return subcommands.ExitFailure
+	}
+
+	if err := p.UpdateSite(g.site, encpass); err != nil {
+		fmt.Println("Can't update profile:", err)
+		return subcommands.ExitFailure
+	}
+	b.UpdateConfigFile(datafile)
+
 	return subcommands.ExitSuccess
 }
 
@@ -103,10 +153,9 @@ func (*generateCmd) Usage() string {
 `
 }
 func (g *generateCmd) SetFlags(f *flag.FlagSet) {
-	defaultName := os.ExpandEnv("$USER")
 	f.StringVar(&g.url, "url", "https://example.com", "URL of the site")
-	f.StringVar(&g.name, "name", defaultName, "Profile of the site")
-	f.StringVar(&g.mail, "mail", defaultMail, "Mail address")
+	f.StringVar(&g.name, "name", "", "Profile of the site")
+	f.StringVar(&g.mail, "mail", "", "Mail address")
 	f.IntVar(&g.len, "len", 16, "Length of the pass")
 }
 func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
@@ -156,7 +205,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 		return subcommands.ExitFailure
 	}
 
-	e = p.AddSite(u.Host, g.url, g.name, encpass, g.mail)
+	e = p.AddSite(u.Host, g.url, p.Name, encpass, g.mail)
 	if e != nil {
 		fmt.Println("Error:", e)
 		return subcommands.ExitFailure
@@ -183,7 +232,7 @@ func (*showCmd) Usage() string {
 }
 func (g *showCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.site, "site", "example.com", "Site name of the acc")
-	f.StringVar(&g.name, "name", defaultName, "Profile")
+	f.StringVar(&g.name, "name", "", "Profile")
 }
 
 func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
@@ -201,39 +250,8 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		return subcommands.ExitFailure
 	}
 
-	u, e := url.Parse(g.site)
-	if e != nil {
-		fmt.Println("Cannot parse URL", g.site, "as an URL:", e)
-		return subcommands.ExitFailure
-	}
-	if u.Host == "" {
-		var word = g.site
-
-		var count = 0
-		var one_site = baccounts.Site{}
-		for host, site := range p.Sites {
-			if strings.Contains(host, word) {
-				count += 1
-				one_site = site
-				url := strings.Replace(site.Url, word, "\x1b[31m"+word+"\x1b[0m", -1)
-				fmt.Printf("Match: %s\n", url)
-			}
-		}
-		if count > 1 {
-			fmt.Printf("%d, more than 2 site matched for keyword '%s'\n", count, word)
-			return subcommands.ExitFailure
-		} else if count == 0 {
-			fmt.Printf("No site matching '%s' found", word)
-			return subcommands.ExitFailure
-		} else {
-			fmt.Printf("One site matched for %s\n", one_site.Name)
-			return b.Show(one_site)
-		}
-	}
-
-	site, ok := p.Sites[u.Host]
-	if !ok {
-		fmt.Println("site not found:", u.Host, p.Sites)
+	site, err := p.FindSite(g.site)
+	if err != nil {
 		return subcommands.ExitFailure
 	}
 	return b.Show(site)
@@ -254,7 +272,7 @@ func (*setDefaultCmd) Usage() string {
 `
 }
 func (g *setDefaultCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&g.name, "name", defaultName, "Profile name to set default")
+	f.StringVar(&g.name, "name", "", "Profile name to set default")
 }
 func (g *setDefaultCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 	var b = (argv[0]).(*baccounts.Baccount)
@@ -294,13 +312,12 @@ func main() {
 	// profiles
 	subcommands.Register(&listCmd{}, "profile")
 	subcommands.Register(&addProfileCmd{}, "profile")
+	subcommands.Register(&updateCmd{}, "profile")
 	// deleteMail deletes mail only when it has no sites
 	subcommands.Register(&generateCmd{}, "profile")
 	// delete deletes site info
 	subcommands.Register(&showCmd{}, "profile")
 	subcommands.Register(&setDefaultCmd{}, "profile")
-	// backup --path ~/Dropbox/
-	// restore --path ~/Dropbox/
 	subcommands.Register(&exportCmd{}, "compat")
 
 	flag.Parse()

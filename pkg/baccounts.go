@@ -11,38 +11,7 @@ import (
 	"github.com/google/subcommands"
 )
 
-type Site struct {
-	Url         string
-	Name        string
-	EncodedPass string
-	Mail        string
-}
-
-type Profile struct {
-	// This mail address corresponds to login info
-	Name    string
-	Sites   map[string]Site
-	Default bool
-}
-
-func NewProfile(mail string, dflt bool) *Profile {
-	return &Profile{mail, make(map[string]Site), dflt}
-}
-
-func (profile *Profile) AddSite(domain, url, name, encpass, mail string) error {
-	_, ok := profile.Sites[domain]
-	if ok {
-		return errors.New("Site already exists: " + domain + " (currently no pass update implemented; TODO)")
-	}
-	profile.Sites[domain] = Site{url, name, encpass, mail}
-	return nil
-}
-
-func (profile *Profile) SetDefault(b bool) {
-	profile.Default = b
-}
-
-const Version = "0.1.0-SNAPSHOT"
+const Version = "0.1.0"
 
 type Baccount struct {
 	Profiles    []*Profile
@@ -99,7 +68,7 @@ func (b *Baccount) Save(file string) error {
 	return ioutil.WriteFile(file, []byte(json), 0600)
 }
 
-func (b *Baccount) Show(site Site) subcommands.ExitStatus {
+func (b *Baccount) Show(site *Site) subcommands.ExitStatus {
 	coder := NewCoder()
 	coder.SetPassphrase()
 	pass, err := coder.Decode(site.EncodedPass)

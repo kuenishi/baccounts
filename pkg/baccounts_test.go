@@ -38,7 +38,7 @@ func TestSave(t *testing.T) {
 	}
 
 	b := &Baccount{Profiles: profiles}
-	
+
 	_ = f.Truncate(0)
 	s, _ := b.toJson()
 	_, _ = f.Write([]byte(s))
@@ -52,12 +52,12 @@ func TestSave(t *testing.T) {
 		t.Error("Can't read test json file", err)
 	}
 	profile := b2.Profiles[0]
-	
+
 	if profile.Name != "me@mac.com" {
 		t.Error("Name")
 	}
 	if profile.Sites["a.com"].Url != "a" {
-		
+
 		t.Error("a.com", profile.Sites["a"])
 	}
 	//var as []Profile
