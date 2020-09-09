@@ -89,7 +89,7 @@ func (*updateCmd) Synopsis() string {
 	return "Update password for the site"
 }
 func (*updateCmd) Usage() string {
-	return `generate -name name -site site
+	return `update -name name -site site
 `
 }
 func (g *updateCmd) SetFlags(f *flag.FlagSet) {
@@ -151,6 +151,7 @@ type generateCmd struct {
 	name string
 	mail string
 	len  int
+	num  bool
 }
 
 func (*generateCmd) Name() string {
@@ -168,6 +169,7 @@ func (g *generateCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.name, "name", "", "Profile of the site")
 	f.StringVar(&g.mail, "mail", "", "Mail address")
 	f.IntVar(&g.len, "len", 16, "Length of the pass")
+	f.BoolVar(&g.num, "num", false, "Num-only")
 }
 func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 	fmt.Printf("Generate profiles: %s @ %s\n", g.name, g.url)
@@ -180,7 +182,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 	}
 
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	max := big.NewInt(int64(len(letters)))
+	var nums = []rune("0123456789")
 
 	p, e := b.GetProfile(g.name)
 	if e != nil {
@@ -197,12 +199,21 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 
 	bytes := make([]rune, g.len)
 	for i := 0; i < g.len; i++ {
-		j, e := rand.Int(rand.Reader, max)
-		if e != nil {
-			fmt.Println("Error:", e)
-			return subcommands.ExitFailure
+		if g.num {
+			j, e := rand.Int(rand.Reader, big.NewInt(int64(len(nums))))
+			if e != nil {
+				fmt.Println("Error:", e)
+				return subcommands.ExitFailure
+			}
+			bytes[i] = nums[j.Int64()]
+		} else {
+			j, e := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+			if e != nil {
+				fmt.Println("Error:", e)
+				return subcommands.ExitFailure
+			}
+			bytes[i] = letters[j.Int64()]
 		}
-		bytes[i] = letters[j.Int64()]
 	}
 
 	fmt.Println(string(bytes))
