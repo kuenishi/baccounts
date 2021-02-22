@@ -112,6 +112,11 @@ func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		return subcommands.ExitFailure
 	}
 
+	if _, err := p.FindSite(g.site); err != nil {
+		fmt.Printf("Cannot find site: %v\n", g.site, err)
+		return subcommands.ExitFailure
+	}
+
 	pass, err := baccounts.ReadPassword("New Password: ")
 	if err != nil {
 		return subcommands.ExitFailure
