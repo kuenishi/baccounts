@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"crypto/rand"
@@ -30,12 +31,8 @@ func (l *listCmd) SetFlags(f *flag.FlagSet) {
 }
 func (l *listCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 	var b = (argv[0]).(*baccounts.Baccount)
-	fmt.Println("default mail:", b.DefaultMail)
-	for _, acc := range b.Profiles {
-		fmt.Printf("%s default=%v\n", acc.Name, acc.Default)
-		for dom := range acc.Sites {
-			fmt.Printf("\t%s:\t%s\t%s\n", dom, acc.Sites[dom].Url, acc.Sites[dom].Mail)
-		}
+	if err := b.List(); err != nil {
+		return subcommands.ExitFailure
 	}
 	return subcommands.ExitSuccess
 }
@@ -58,21 +55,12 @@ func (a *addProfileCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&a.name, "name", "", "Name of a new profile")
 }
 func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
-
 	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
-
-	p, e := b.GetProfile(a.name)
-	if p != nil || e == nil {
-		fmt.Println("Profile already exists:", p)
+	if err := b.AddProfile(a.name, datafile); err != nil {
+		log.Printf("fail: %v", err)
 		return subcommands.ExitFailure
 	}
-
-	fmt.Println("Adding a profile:", a.name)
-	dflt := (len(b.Profiles) == 0)
-	b.Profiles = append(b.Profiles, baccounts.NewProfile(a.name, dflt))
-
-	b.UpdateConfigFile(datafile)
 	return subcommands.ExitSuccess
 }
 
@@ -97,57 +85,13 @@ func (g *updateCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.name, "name", "", "Profile name")
 }
 func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
-	fmt.Printf("Update profile: %s @ %s\n", g.name, g.site)
 	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 
-	if g.site == "" {
-		fmt.Println("-site cannot be empty")
+	if err := b.Update(g.name, g.site, datafile); err != nil {
+		log.Println("failed to update: %v", err)
 		return subcommands.ExitFailure
 	}
-
-	p, e := b.GetProfile(g.name)
-	if e != nil {
-		fmt.Println("Error:", e)
-		return subcommands.ExitFailure
-	}
-
-	if _, err := p.FindSite(g.site); err != nil {
-		fmt.Printf("Cannot find site: %v\n", g.site, err)
-		return subcommands.ExitFailure
-	}
-
-	pass, err := baccounts.ReadPassword("New Password: ")
-	if err != nil {
-		return subcommands.ExitFailure
-	}
-	pass2, err := baccounts.ReadPassword("Input Again: ")
-	if err != nil {
-		return subcommands.ExitFailure
-	}
-	if pass != pass2 {
-		fmt.Printf("Password inputs don't match.\n")
-		return subcommands.ExitFailure
-	}
-
-	if len(pass) < 8 {
-		fmt.Printf("New password should be longer than 8 chars (%d)\n", len(pass))
-		return subcommands.ExitFailure
-	}
-
-	coder := baccounts.NewCoder()
-	encpass, err := coder.Encode(pass, 0)
-	if err != nil {
-		fmt.Println("Can't encode pass:", err)
-		return subcommands.ExitFailure
-	}
-
-	if err := p.UpdateSite(g.site, encpass); err != nil {
-		fmt.Println("Can't update profile:", err)
-		return subcommands.ExitFailure
-	}
-	b.UpdateConfigFile(datafile)
-	fmt.Println("Password successfully updated.")
 	return subcommands.ExitSuccess
 }
 

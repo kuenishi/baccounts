@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/atotto/clipboard"
@@ -18,6 +19,83 @@ type Baccount struct {
 	DefaultMail string // Used for private key seek
 	Version     string
 }
+
+func (b *Baccount) List() error {
+	fmt.Println("default mail:", b.DefaultMail)
+	for _, acc := range b.Profiles {
+		fmt.Printf("%s default=%v\n", acc.Name, acc.Default)
+		for dom := range acc.Sites {
+			fmt.Printf("\t%s:\t%s\t%s\n", dom, acc.Sites[dom].Url, acc.Sites[dom].Mail)
+		}
+	}
+	return nil
+}
+
+func (b *Baccount) AddProfile(name, datafile string) error {
+	p, e := b.GetProfile(name)
+	if p != nil || e == nil {
+		return fmt.Errorf("Profile already exists:", p)
+	}
+
+	fmt.Println("Adding a profile:", name)
+	dflt := (len(b.Profiles) == 0)
+	b.Profiles = append(b.Profiles, NewProfile(name, dflt))
+
+	return b.UpdateConfigFile(datafile)
+}
+
+func (b *Baccount) Update(name, site, datafile string) error {
+	fmt.Printf("Update profile: %s @ %s\n", name, site)
+
+	if site == "" {
+		return fmt.Errorf("-site cannot be empty")
+	}
+
+	p, e := b.GetProfile(name)
+	if e != nil {
+		return e
+	}
+
+	if _, err := p.FindSite(site); err != nil {
+		return fmt.Errorf("Cannot find site: %v\n", site, err)
+	}
+
+	pass, err := ReadPassword("New Password: ")
+	if err != nil {
+		return err
+	}
+	pass2, err := ReadPassword("Input Again: ")
+	if err != nil {
+		return err
+	}
+	if pass != pass2 {
+		return fmt.Errorf("Password inputs don't match.")
+	}
+
+	if len(pass) < 8 {
+		return fmt.Errorf("New password should be longer than 8 chars (%d)\n", len(pass))
+	}
+
+	coder := NewCoder()
+	encpass, err := coder.Encode(pass, 0)
+	if err != nil {
+		log.Println("Can't encode pass:", err)
+		return err
+	}
+
+	if err := p.UpdateSite(site, encpass); err != nil {
+		log.Println("Can't update profile:", err)
+		return err
+	}
+	if err := b.UpdateConfigFile(datafile); err != nil {
+		log.Println("Cannot update password file")
+		return err
+	}
+	fmt.Println("Password successfully updated.")
+	return nil
+}
+
+// ===============================================
 
 func (b *Baccount) GetDefault() (*Profile, error) {
 	for _, p := range b.Profiles {
