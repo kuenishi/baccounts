@@ -243,8 +243,9 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 }
 
 type showCmd struct {
-	name string
-	site string
+	name        string
+	site        string
+	interactive bool
 }
 
 func (*showCmd) Name() string {
@@ -258,22 +259,39 @@ func (*showCmd) Usage() string {
 `
 }
 func (g *showCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&g.site, "site", "example.com", "Site name of the acc")
+	f.StringVar(&g.site, "site", "", "Site name of the acc")
 	f.StringVar(&g.name, "name", "", "Profile")
+	f.BoolVar(&g.interactive, "i", false, "Interactive mode")
 }
 
 func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
 	var b = (argv[0]).(*baccounts.Baccount)
 
-	if g.site == "example.com" {
-		fmt.Println("Site lacking")
-		return subcommands.ExitFailure
-	}
-
 	p, e := b.GetProfile(g.name)
 	if e != nil {
 		fmt.Println("Cannot get profile:", e)
+		return subcommands.ExitFailure
+	}
+
+	if g.interactive {
+		// Interactive mode
+		if g.site != "" {
+			fmt.Println("-site not needed in interactive mode")
+			return subcommands.ExitFailure
+		}
+
+		site, err := p.FindSiteInteractive()
+		if err != nil {
+			return subcommands.ExitFailure
+		}
+		fmt.Println("Selected: %s", site.Url)
+		return b.Show(site)
+	}
+
+	// Noniteractive mode
+	if g.site == "" {
+		fmt.Println("Site lacking")
 		return subcommands.ExitFailure
 	}
 
