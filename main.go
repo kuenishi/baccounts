@@ -283,6 +283,7 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 
 		site, err := p.FindSiteInteractive()
 		if err != nil {
+			fmt.Println("Error: %v", err)
 			return subcommands.ExitFailure
 		}
 		fmt.Println("Selected: %s", site.Url)
