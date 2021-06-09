@@ -259,9 +259,8 @@ func (*showCmd) Usage() string {
 `
 }
 func (g *showCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&g.site, "site", "", "Site name of the acc")
+	f.StringVar(&g.site, "site", "", "Site name of the account (interactive if empty)")
 	f.StringVar(&g.name, "name", "", "Profile")
-	f.BoolVar(&g.interactive, "i", false, "Interactive mode")
 }
 
 func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
@@ -274,13 +273,8 @@ func (g *showCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{
 		return subcommands.ExitFailure
 	}
 
-	if g.interactive {
-		// Interactive mode
-		if g.site != "" {
-			fmt.Println("-site not needed in interactive mode")
-			return subcommands.ExitFailure
-		}
-
+	// Interactive mode
+	if g.site == "" {
 		site, err := p.FindSiteInteractive()
 		if err != nil {
 			fmt.Println("Error: %v", err)
