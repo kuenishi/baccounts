@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/atotto/clipboard"
 	"github.com/google/subcommands"
@@ -18,6 +18,7 @@ type Baccount struct {
 	Profiles    []*Profile
 	DefaultMail string // Used for private key seek
 	Version     string
+	ReadOnly    bool
 }
 
 func (b *Baccount) List() error {
@@ -128,22 +129,35 @@ func (b *Baccount) toJson() (string, error) {
 }
 
 func (b *Baccount) UpdateConfigFile(dest string) error {
-	tmpfile := os.ExpandEnv("$HOME/.baccounts-temp")
-	b.Save(tmpfile)
-	e := os.Rename(tmpfile, dest)
-	if e != nil {
-		fmt.Printf("Error on saving profiles: %v\n", e)
-		os.Exit(-1)
+	if b.ReadOnly {
+		return fmt.Errorf("read-only config: possibly, move it to $XDG_CONFIG_HOME/baccounts.json")
+	}
+
+	dir1, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+	tmpfile := filepath.Join(dir1, "baccounts-temp.json")
+	if err := b.save(tmpfile); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpfile, dest); err != nil {
+		fmt.Printf("Error on saving profiles: %v\n", err)
+		return err
 	}
 	return nil
 }
 
-func (b *Baccount) Save(file string) error {
-	json, err := b.toJson()
+func (b *Baccount) save(datafile string) error {
+
+	fp, err := os.OpenFile(datafile, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(file, []byte(json), 0600)
+	defer fp.Close()
+
+	encoder := json.NewEncoder(fp)
+	return encoder.Encode(b)
 }
 
 func (b *Baccount) Show(site *Site) subcommands.ExitStatus {
@@ -165,28 +179,47 @@ func (b *Baccount) Show(site *Site) subcommands.ExitStatus {
 
 }
 
-func LoadKeysFromJson(js string) (*Baccount, error) {
-	var b Baccount
-	err := json.Unmarshal([]byte(js), &b)
-	if err != nil {
-		fmt.Printf("Invalid format: %v\n", err)
-		return nil, err
+func LoadAccounts() (*Baccount, string, error) {
+	// Try new config file
+	dir1, err := os.UserConfigDir()
+	if err == nil {
+		datafile := filepath.Join(dir1, "baccounts.json")
+		b, err := LoadKeys(datafile)
+		if err != nil {
+			log.Printf("Failed to load keys: %v", err)
+		} else {
+			b.ReadOnly = false
+			return b, datafile, nil
+		}
 	}
-	return &b, nil
+	// Try old config file
+	dir2, err := os.UserHomeDir()
+	if err != nil {
+		return nil, "", fmt.Errorf("Failed to get home dir: %v", err)
+	}
+	datafile := filepath.Join(dir2, ".baccounts")
+	log.Printf("Reading keys from %s", datafile)
+	b, err := LoadKeys(datafile)
+	if err != nil {
+		return nil, datafile, err
+	}
+	b.ReadOnly = true
+	return b, datafile, nil
 }
 
 func LoadKeys(datafile string) (*Baccount, error) {
-	file, err := os.Open(datafile)
+	fp, err := os.Open(datafile)
 	if err != nil {
 		fmt.Printf("No such file as %s. Will create a new one\n", datafile)
 		// return &Baccount{make([]*Profile, 0, 16), nil, version}, nil
 		return nil, err
 	}
-	defer file.Close()
+	defer fp.Close()
 
-	bytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		fmt.Printf("no content")
+	var b Baccount
+	decoder := json.NewDecoder(fp)
+	if err := decoder.Decode(&b); err != nil {
+		return nil, fmt.Errorf("Unable to parse json")
 	}
-	return LoadKeysFromJson(string(bytes))
+	return &b, nil
 }

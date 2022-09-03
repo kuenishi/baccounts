@@ -182,7 +182,10 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 		return subcommands.ExitFailure
 	}
 
-	b.UpdateConfigFile(datafile)
+	if err := b.UpdateConfigFile(datafile); err != nil {
+		log.Printf("Failed to save %s: %v", datafile, err)
+		return subcommands.ExitFailure
+	}
 	return subcommands.ExitSuccess
 }
 
@@ -267,11 +270,10 @@ func (g *setDefaultCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 }
 
 func main() {
-	datafile := os.ExpandEnv("$HOME/.baccounts")
-	b, err := baccounts.LoadKeys(datafile)
+	b, datafile, err := baccounts.LoadAccounts()
 	if err != nil {
 		fmt.Printf("baccounts version %s - data file version: %s\n", baccounts.Version, b.Version)
-		return
+		os.Exit(1)
 	}
 
 	subcommands.Register(subcommands.HelpCommand(), "meta")
