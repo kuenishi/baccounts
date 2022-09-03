@@ -9,17 +9,26 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func emitStr(s tcell.Screen, x, y int, style tcell.Style, str string) {
-	for _, c := range str {
+/**
+ * the emitStr() function is borrowed from tcell demonstration; this is
+ **/
+func renderLine(s tcell.Screen, w, h int, style tcell.Style, str string) {
+	for i := 0; i < w; i++ {
+		// for _, c := range str {
 		var comb []rune
-		w := runewidth.RuneWidth(c)
-		if w == 0 {
-			comb = []rune{c}
-			c = ' '
-			w = 1
+		if i < len(str) {
+			c := str[i]
+			rw := runewidth.RuneWidth(c)
+			if rw == 0 {
+				comb = []rune{c}
+				c = ' '
+				rw = 1
+			}
+			s.SetContent(i, h, c, comb, style)
+			i += rw
+		} else {
+			s.SetContent(i, h, ' ', comb, style)
 		}
-		s.SetContent(x, y, c, comb, style)
-		x += w
 	}
 }
 
