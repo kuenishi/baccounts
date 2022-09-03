@@ -126,10 +126,9 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		}
 		profiles = append(profiles, profile)
 	}
-	c := &baccounts.Baccount{profiles, b.DefaultMail, b.Version}
+	c := &baccounts.Baccount{profiles, b.DefaultMail, b.Version, false}
 
-	err := c.Save(g.file)
-	if err != nil {
+	if err := c.UpdateConfigFile(g.file); err != nil {
 		fmt.Println("Failed to save to", g.file)
 		return subcommands.ExitFailure
 	}
