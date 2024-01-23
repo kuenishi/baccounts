@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"log/slog"
 	"os"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -17,14 +18,36 @@ import (
 type Coder struct {
 	gpgDir     string
 	passphrase string
+	publicKeyring openpgp.EntityList
 }
 
 func NewTestCoder() *Coder {
-	return &Coder{"../keys/", "baccounts"}
+	return &Coder{"../keys/", "baccounts", nil}
 }
 
 func NewCoder() *Coder {
-	return &Coder{os.ExpandEnv("$HOME/.gnupg/"), "null"}
+	gpgDir := os.ExpandEnv("$HOME/.gnupg/")
+
+	//publicKeyring := os.ExpandEnv("$HOME/.gnupg/pubring.gpg")
+	//publicKeyring := "./keys/pubring.gpg"
+	publicKeyring := gpgDir + "pubring.gpg"
+
+	keyringFileBuffer, _ := os.Open(publicKeyring)
+	defer keyringFileBuffer.Close()
+	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
+	if err != nil {
+		slog.Error("cant read public keyring", "err", err)
+		panic("Can't load pubring")
+	}
+
+	coder := &Coder{
+		gpgDir,
+		"",
+		entityList,
+	}
+	fmt.Println("Public keyring:", coder.PublicKeyringFile())
+	fmt.Println("Secret Keyring:", coder.SecretKeyringFile())
+	return coder
 }
 
 func (coder *Coder) PublicKeyringFile() string {
@@ -54,31 +77,14 @@ func (coder *Coder) SetPassphrase() {
 }
 
 func (coder *Coder) HasPubKey(id int) bool {
-	publicKeyring := coder.gpgDir + "pubring.gpg"
-	fmt.Println("Public keyring:", publicKeyring)
-
-	keyringFileBuffer, _ := os.Open(publicKeyring)
-	defer keyringFileBuffer.Close()
-	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
-	if err != nil {
-		return false
-	}
-	return (id > 0 && len(entityList) > id)
+	return (id > 0 && len(coder.publicKeyring) > id)
 }
 func (coder *Coder) Encode(txt string, id int) (string, error) {
-	//publicKeyring := os.ExpandEnv("$HOME/.gnupg/pubring.gpg")
-	//publicKeyring := "./keys/pubring.gpg"
-	publicKeyring := coder.gpgDir + "pubring.gpg"
-	fmt.Println("Public keyring:", publicKeyring)
-
-	keyringFileBuffer, _ := os.Open(publicKeyring)
-	defer keyringFileBuffer.Close()
-	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
-	if err != nil {
-		return "fail", err
-	}
+	slog.Info("Encode", "key", coder.publicKeyring[id])
+	keys := coder.publicKeyring[id:]
+	
 	buf := new(bytes.Buffer)
-	w, err := openpgp.Encrypt(buf, entityList[id:], nil, nil, nil)
+	w, err := openpgp.Encrypt(buf, keys, nil, nil, nil)
 	if err != nil {
 		return "fail2", err
 	}
@@ -101,16 +107,14 @@ func (coder *Coder) Encode(txt string, id int) (string, error) {
 func (coder *Coder) Decode(txt string) (string, error) {
 	//secretKeyring := os.ExpandEnv("$HOME/.gnupg/secring.gpg")
 	// secretKeyring := "./keys/secring.gpg"
-	secretKeyring := coder.gpgDir + "secring.gpg"
 	passphrase := coder.passphrase
-	fmt.Println("Secret Keyring:", secretKeyring)
 
 	// init some vars
 	var entity *openpgp.Entity
 	var entityList openpgp.EntityList
 
 	// Open the private key file
-	keyringFileBuffer, err := os.Open(secretKeyring)
+	keyringFileBuffer, err := os.Open(coder.SecretKeyringFile())
 	if err != nil {
 		return "", err
 	}

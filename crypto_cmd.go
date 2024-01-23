@@ -4,9 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/google/subcommands"
+	"log/slog"
 	"net/url"
 
+	"github.com/google/subcommands"
 	"github.com/kuenishi/baccounts/pkg"
 )
 
@@ -30,21 +31,21 @@ func (g *testCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) 
 	coder := baccounts.NewCoder()
 	enc, err := coder.Encode(msg, 0)
 	if err != nil {
-		fmt.Println("Error:", err)
+		slog.Error("Encode fail", "fail", enc, "err", err)
 		return subcommands.ExitFailure
 	}
-	fmt.Printf("%s\n => %s\n", msg, enc)
+	slog.Info("encode ok", "msg", msg, "encoded", enc)
 	coder.SetPassphrase()
 	decoded, err := coder.Decode(enc)
 	if err != nil {
-		fmt.Println("Error:", err)
+		slog.Error("Decode fail", "err", err)
 		return subcommands.ExitFailure
 	}
 	if decoded != msg {
 		fmt.Printf("%s != %s\n", msg, decoded)
 		return subcommands.ExitFailure
 	}
-	fmt.Println(" =>", decoded)
+	slog.Info("decode ok", "message", msg, "decoded", decoded)
 	return subcommands.ExitSuccess
 }
 
@@ -91,7 +92,6 @@ func (*exportCmd) Usage() string {
 }
 func (g *exportCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&g.file, "file", "/tmp/baccounts.exported", "File name to export file")
-	f.IntVar(&g.key, "key", 0, "PGP public key choice to export (default: 0)")
 }
 func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interface{}) subcommands.ExitStatus {
 
@@ -102,15 +102,8 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 		fmt.Println("No datafile destination: using STDOUT instead")
 	}
 	coder := baccounts.NewCoder()
-	if !coder.HasPubKey(g.key) {
-		fmt.Println("Invalid key selection")
-		return subcommands.ExitFailure
-	}
-
-	fmt.Printf("Exporting to %s with key id = %d\n", g.file, g.key)
-
-	// Get public key entity from public keyring and encrypt with it
 	coder.SetPassphrase()
+	fmt.Printf("Exporting to %s with key id = %d\n", g.file, g.key)
 
 	profiles := make([]*baccounts.Profile, 0)
 	for _, p := range b.Profiles {
@@ -120,9 +113,7 @@ func (g *exportCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 			site := p.Sites[key]
 			u, _ := url.Parse(site.Url)
 			pass, _ := coder.Decode(site.EncodedPass)
-			new, _ := coder.Encode(pass, g.key)
-			fmt.Printf("%s => %s\n", site.EncodedPass, new)
-			profile.AddSite(u.Host, site.Url, site.Name, new, site.Mail)
+			profile.AddSite(u.Host, site.Url, site.Name, pass, site.Mail)
 		}
 		profiles = append(profiles, profile)
 	}

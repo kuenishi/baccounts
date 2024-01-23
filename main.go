@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"crypto/rand"
@@ -58,7 +58,7 @@ func (a *addProfileCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...inte
 	var b = (argv[0]).(*baccounts.Baccount)
 	var datafile = (argv[1]).(string)
 	if err := b.AddProfile(a.name, datafile); err != nil {
-		log.Printf("fail: %v", err)
+		slog.Info("fail", err)
 		return subcommands.ExitFailure
 	}
 	return subcommands.ExitSuccess
@@ -89,7 +89,7 @@ func (g *updateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interfac
 	var datafile = (argv[1]).(string)
 
 	if err := b.Update(g.name, g.site, datafile); err != nil {
-		log.Println("failed to update: %v", err)
+		slog.Error("failed to update password", "err", err)
 		return subcommands.ExitFailure
 	}
 	return subcommands.ExitSuccess
@@ -183,7 +183,7 @@ func (g *generateCmd) Execute(_ context.Context, f *flag.FlagSet, argv ...interf
 	}
 
 	if err := b.UpdateConfigFile(datafile); err != nil {
-		log.Printf("Failed to save %s: %v", datafile, err)
+		slog.Info("Failed to save", "datafile", datafile, err)
 		return subcommands.ExitFailure
 	}
 	return subcommands.ExitSuccess
@@ -288,6 +288,8 @@ func main() {
 	subcommands.Register(&updateCmd{}, "profile")
 	// deleteMail deletes mail only when it has no sites
 	subcommands.Register(&generateCmd{}, "profile")
+	// List keys
+	subcommands.Register(&listKeysCmd{}, "profile")
 	// delete deletes site info
 	subcommands.Register(&showCmd{}, "profile")
 	subcommands.Register(&setDefaultCmd{}, "profile")

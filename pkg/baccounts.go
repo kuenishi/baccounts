@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -46,8 +47,6 @@ func (b *Baccount) AddProfile(name, datafile string) error {
 }
 
 func (b *Baccount) Update(name, site, datafile string) error {
-	fmt.Printf("Update profile: %s @ %s\n", name, site)
-
 	if site == "" {
 		return fmt.Errorf("-site cannot be empty")
 	}
@@ -56,6 +55,7 @@ func (b *Baccount) Update(name, site, datafile string) error {
 	if e != nil {
 		return e
 	}
+	fmt.Printf("Updating profile: %s @ %s\n", p.Name, site)
 
 	if _, err := p.FindSite(site); err != nil {
 		return fmt.Errorf("Cannot find site: %v\n", site, err)
@@ -80,7 +80,7 @@ func (b *Baccount) Update(name, site, datafile string) error {
 	coder := NewCoder()
 	encpass, err := coder.Encode(pass, 0)
 	if err != nil {
-		log.Println("Can't encode pass:", err)
+		slog.Error("Can't encode pass", "encpass", encpass, "err", err)
 		return err
 	}
 
@@ -101,6 +101,7 @@ func (b *Baccount) Update(name, site, datafile string) error {
 func (b *Baccount) GetDefault() (*Profile, error) {
 	for _, p := range b.Profiles {
 		if p.Default {
+			slog.Debug("Using default profile:", "name", p.Name)
 			return p, nil
 		}
 	}
