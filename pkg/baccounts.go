@@ -80,7 +80,7 @@ func (b *Baccount) Update(name, site, datafile string) error {
 	coder := NewCoder()
 	encpass, err := coder.Encode(pass, 0)
 	if err != nil {
-		log.Println("Can't encode pass:", err)
+		log.Printf("Can't encode pass. Encoded as %s: %v", encpass, err)
 		return err
 	}
 
