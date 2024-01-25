@@ -105,6 +105,7 @@ dependencies = [
  "env_logger",
  "log",
  "pgp",
+ "rand",
  "xdg",
 ]
 

@@ -11,3 +11,4 @@ log = "*"
 env_logger = "*"
 clap = { version = "*", features=["derive"] }
 xdg = "*"
+rand = "*"
