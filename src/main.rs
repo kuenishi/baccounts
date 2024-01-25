@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
-
 use env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
+use xdg;
 
 #[derive(Debug, Parser)]
 #[clap(
@@ -15,10 +16,14 @@ struct Cli {
     #[clap(subcommand)]
     subcommand: SubCommands,
     /// server url
-    #[clap(short = 's', long = "server", value_name = "URL", default_value = "localhost:3000")]
+    #[clap(
+        short = 's',
+        long = "server",
+        value_name = "URL",
+        default_value = "localhost:3000"
+    )]
     server: String,
 }
-
 
 #[derive(Debug, Subcommand)]
 enum SubCommands {
@@ -32,14 +37,13 @@ enum SubCommands {
             long = "format",
             required = true,
             ignore_case = true,
-            value_enum,
+            value_enum
         )]
         format: Format,
     },
     /// post logs, taking input from stdin
     Post,
 }
-
 
 #[derive(Debug, Clone, ValueEnum)]
 enum Format {
@@ -48,21 +52,21 @@ enum Format {
 }
 
 fn main() {
-    pritty_env_logger::try_init();
-    
+    env_logger::init();
+
     println!("Hello, world!");
     debug!("hello");
 
+    let confd = xdg::BaseDirectories::with_prefix("baccounts").unwrap();
+    let pkey = confd.get_config_file("kuenishi-public-key.key");
+    debug!("{}", pkey.display());
+
     let cli = Cli::parse();
     match cli.subcommand {
-        SubCommands::Test => {
-            
-        },
-        SubCommands::Get { format } => {
-            match format {
-                Format::Csv => unimplemented!(),
-                Format::Json => unimplemented!(),
-            }
+        SubCommands::Test => {}
+        SubCommands::Get { format } => match format {
+            Format::Csv => unimplemented!(),
+            Format::Json => unimplemented!(),
         },
         SubCommands::Post => unimplemented!(),
     }

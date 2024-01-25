@@ -10,3 +10,4 @@ pgp = "0.10"
 log = "*"
 env_logger = "*"
 clap = { version = "*", features=["derive"] }
+xdg = "*"
