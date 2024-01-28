@@ -38,6 +38,13 @@ enum SubCommands {
     Test,
 
     #[clap(arg_required_else_help = true)]
+    /// Add a new profile
+    AddProfile {
+        #[clap(long = "name", required = true, ignore_case = true)]
+        name: String,
+    },
+
+    #[clap(arg_required_else_help = true)]
     /// Show the password (copyt to the clipboard)
     Show {
         #[clap(short = 's', long = "site", required = true, ignore_case = true)]
@@ -94,6 +101,7 @@ enum Format {
 
 mod baccounts;
 use baccounts::Baccounts;
+use baccounts::Profile;
 
 fn test() {
     info!("Testing the encryption & decryption environment...");
@@ -157,6 +165,25 @@ fn main() {
 
     match cli.subcommand {
         SubCommands::Test => test(),
+        SubCommands::AddProfile { name } => {
+            debug!("Adding profile: {}", name);
+            let p = Profile::new(&name);
+            let datafile = confd.get_config_file("baccounts.json.asc");
+            let b = Baccounts::from_file(&datafile);
+            match b.find_profile(&name) {
+                Some(_) => {
+                    error!("Profile already exists: {}", name);
+                    std::process::exit(1);
+                }
+                None => {
+                    info!("Adding new profile: {:?}", p);
+                    unimplemented!();
+                    //b.add_profile(p);
+                    //b.to_file(&name, &datafile);
+                    //info!("New profile saved to {}", datafile.display());
+                }
+            }
+        }
         SubCommands::Show { site } => {
             debug!("Showing site: {}", site);
             let datafile = confd.get_config_file("baccounts.json.asc");
