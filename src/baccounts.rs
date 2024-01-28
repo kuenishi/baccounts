@@ -1,8 +1,8 @@
-
-use serde::{Serialize, Deserialize};
-use std::fs;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 use std::io::prelude::*;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[allow(non_snake_case)]
@@ -16,9 +16,9 @@ pub struct Site {
 #[derive(Serialize, Deserialize, Debug)]
 #[allow(non_snake_case)]
 pub struct Profile {
-	pub Name:   String,
-	pub Sites:   HashMap<String, Site>,
-	pub Default: bool,
+    pub Name: String,
+    pub Sites: HashMap<String, Site>,
+    pub Default: bool,
 }
 
 impl Profile {
@@ -34,6 +34,15 @@ impl Profile {
         for (key, value) in &self.Sites {
             println!("\t{}: \t{}", key, value.Mail);
         }
+    }
+
+    pub fn find_site(&self, site_name: &String) -> Option<&Site> {
+        for (name, site) in self.Sites.iter() {
+            if site.Url.contains(site_name) {
+                return Some(site);
+            }
+        }
+        return None;
     }
 }
 
@@ -51,14 +60,12 @@ impl Baccounts {
             Profiles: Vec::new(),
             DefaultMail: String::new(),
             Version: String::new(),
-        }    
+        }
     }
 
-    pub fn from_file(filename: &str) -> Self {
+    pub fn from_file(filename: &PathBuf) -> Self {
         let mut file = fs::File::open(filename).expect("Unable to open file");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Unable to read file");
-        let baccounts: Baccounts = serde_json::from_str(&contents).expect("Unable to parse file");
+        let baccounts: Baccounts = serde_json::from_reader(&file).expect("Unable to parse file");
         baccounts
     }
 
@@ -67,5 +74,18 @@ impl Baccounts {
             println!("{}", profile.Name);
             profile.list();
         }
+    }
+
+    pub fn find_profile(&self, profile_name: &String) -> Option<&Profile> {
+        for profile in &self.Profiles {
+            if profile_name == "" {
+                if profile.Default {
+                    return Some(profile);
+                }
+            } else if profile.Name == *profile_name {
+                return Some(profile);
+            }
+        }
+        None
     }
 }

@@ -95,16 +95,7 @@ enum Format {
 mod baccounts;
 use baccounts::Baccounts;
 
-fn main() {
-    env_logger::init();
-
-    println!("Hello, world!");
-    debug!("hello");
-
-    let confd = xdg::BaseDirectories::with_prefix("baccounts").unwrap();
-    let pkey_file = confd.get_config_file("kuenishi-public-key.key");
-    debug!("{}", pkey_file.display());
-
+fn test(pkey_file: &std::path::PathBuf) {
     // let pubkey = fs::read(pkey_file).unwrap();
     let mut f = fs::File::open(&pkey_file).unwrap();
     //.context("Trying to load pkey fron config")?;
@@ -117,20 +108,50 @@ fn main() {
         .encrypt_to_keys(&mut rng, SymmetricKeyAlgorithm::AES128, &[&pk])
         .unwrap();
     print!("{}", new_msg.to_armored_string(None).unwrap());
+}
+
+fn main() {
+    env_logger::init();
+
+    println!("Hello, world!");
+    debug!("hello");
+
+    let confd = xdg::BaseDirectories::with_prefix("baccounts").unwrap();
+    let pkey_file = confd.get_config_file("kuenishi-public-key.key");
+    debug!("{}", pkey_file.display());
 
     let cli = Cli::parse();
 
-    info!("Using profile '{}'", cli.profile);
+    info!("Using profile '{}' (or default for empty)", cli.profile);
 
     match cli.subcommand {
-        SubCommands::Test => {}
+        SubCommands::Test => test(&pkey_file),
         SubCommands::Show { site } => {
-            info!("Showing site: {}", site);
-            unimplemented!();
+            debug!("Showing site: {}", site);
+            let datafile = confd.get_config_file("baccounts.json");
+            let b = Baccounts::from_file(&datafile);
+            match b.find_profile(&cli.profile) {
+                Some(profile) => {
+                    debug!("Profile found: {}", profile.Name);
+                    match profile.find_site(&site) {
+                        Some(s) => {
+                            println!("{}", s.Name);
+                            println!("\t{} {} {}", s.Mail, s.Url, s.EncodedPass);
+                        }
+                        None => {
+                            error!("Site {} not found", site);
+                        }
+                    }
+                }
+                None => {
+                    error!("Profile {} not found", cli.profile);
+                }
+            }
         }
         SubCommands::List => {
-            info!("Listing sites");
-            let b = Baccounts::from_file("hage.json");
+            debug!("Listing sites");
+            let datafile = confd.get_config_file("baccounts.json");
+            let b = Baccounts::from_file(&datafile);
             b.list();
         }
         SubCommands::Generate { len, mail, url } => {
