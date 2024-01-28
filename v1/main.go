@@ -12,7 +12,7 @@ import (
 	"net/url"
 
 	"github.com/google/subcommands"
-	"github.com/kuenishi/baccounts/pkg"
+	baccounts "github.com/kuenishi/baccounts/pkg"
 )
 
 type listCmd struct {

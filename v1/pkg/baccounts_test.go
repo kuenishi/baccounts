@@ -47,8 +47,8 @@ func TestSave(t *testing.T) {
 	_, _ = f.Seek(0, 0)
 	f.Close()
 
-	b2, err := LoadKeysFromJson(s)
-	if err != nil {
+	var b2 Baccount
+	if err := json.Unmarshal([]byte(s), &b2); err != nil {
 		t.Error("Can't read test json file", err)
 	}
 	profile := b2.Profiles[0]

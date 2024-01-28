@@ -36,7 +36,7 @@ func (b *Baccount) List() error {
 func (b *Baccount) AddProfile(name, datafile string) error {
 	p, e := b.GetProfile(name)
 	if p != nil || e == nil {
-		return fmt.Errorf("Profile already exists:", p)
+		return fmt.Errorf("Profile already exists: %v", p)
 	}
 
 	fmt.Println("Adding a profile:", name)
@@ -58,7 +58,7 @@ func (b *Baccount) Update(name, site, datafile string) error {
 	fmt.Printf("Updating profile: %s @ %s\n", p.Name, site)
 
 	if _, err := p.FindSite(site); err != nil {
-		return fmt.Errorf("Cannot find site: %v\n", site, err)
+		return fmt.Errorf("Cannot find site %s: %v", site, err)
 	}
 
 	pass, err := ReadPassword("New Password: ")

@@ -2,6 +2,7 @@ package baccounts
 
 import (
 	"bytes"
+
 	"golang.org/x/crypto/openpgp"
 
 	"encoding/base64"
@@ -11,18 +12,31 @@ import (
 	"log/slog"
 	"os"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type Coder struct {
-	gpgDir     string
-	passphrase string
+	gpgDir        string
+	passphrase    string
 	publicKeyring openpgp.EntityList
 }
 
 func NewTestCoder() *Coder {
-	return &Coder{"../keys/", "baccounts", nil}
+	c := &Coder{"../keys/", "baccounts", nil}
+
+	publicKeyring := c.gpgDir + "pubring.gpg"
+
+	keyringFileBuffer, _ := os.Open(publicKeyring)
+	defer keyringFileBuffer.Close()
+	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
+	if err != nil {
+		slog.Error("cant read public keyring", "file", publicKeyring, "err", err)
+		panic("Can't load pubring")
+	}
+	c.publicKeyring = entityList
+	return c
 }
 
 func NewCoder() *Coder {
@@ -82,7 +96,7 @@ func (coder *Coder) HasPubKey(id int) bool {
 func (coder *Coder) Encode(txt string, id int) (string, error) {
 	slog.Info("Encode", "key", coder.publicKeyring[id])
 	keys := coder.publicKeyring[id:]
-	
+
 	buf := new(bytes.Buffer)
 	w, err := openpgp.Encrypt(buf, keys, nil, nil, nil)
 	if err != nil {
