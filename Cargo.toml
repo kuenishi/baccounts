@@ -12,3 +12,5 @@ env_logger = "*"
 clap = { version = "*", features=["derive"] }
 xdg = "*"
 rand = "*"
+serde = { version = "*", features=["derive"] }
+serde_json = {version = "*"}

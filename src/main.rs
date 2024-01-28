@@ -22,6 +22,7 @@ use std::{fs, io::Cursor, io::Read};
     about = env!("CARGO_PKG_DESCRIPTION"),
     arg_required_else_help = true,
 )]
+
 struct Cli {
     #[clap(subcommand)]
     subcommand: SubCommands,
@@ -91,6 +92,9 @@ enum Format {
     Json,
 }
 
+mod baccounts;
+use baccounts::Baccounts;
+
 fn main() {
     env_logger::init();
 
@@ -125,7 +129,9 @@ fn main() {
             unimplemented!();
         }
         SubCommands::List => {
-            unimplemented!();
+            info!("Listing sites");
+            let b = Baccounts::from_file("hage.json");
+            b.list();
         }
         SubCommands::Generate { len, mail, url } => {
             info!(
