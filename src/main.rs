@@ -18,11 +18,10 @@ use arboard::SetExtLinux;
     about = env!("CARGO_PKG_DESCRIPTION"),
     arg_required_else_help = true,
 )]
-
 struct Cli {
     #[clap(subcommand)]
     subcommand: SubCommands,
-    /// server url
+    /// The name of profile
     #[clap(
         short = 'p',
         long = "profile",
@@ -35,17 +34,21 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum SubCommands {
-    // Test keys for encrypt and decrypt ready
+    /// Test keys for encrypt and decrypt ready
     Test,
 
     #[clap(arg_required_else_help = true)]
+    /// Show the password (copyt to the clipboard)
     Show {
         #[clap(short = 's', long = "site", required = true, ignore_case = true)]
         site: String,
     },
+
+    /// List all the sites in the profile (without password)
     List,
 
     #[clap(arg_required_else_help = true)]
+    /// Generate password and save it to the profile
     Generate {
         #[clap(
             short = 'l',
@@ -62,7 +65,10 @@ enum SubCommands {
         url: String,
     },
 
-    #[clap(arg_required_else_help = true)]
+    #[clap(
+        arg_required_else_help = true,
+        about = "Update password and save it to the profile"
+    )]
     Update {
         #[clap(
             short = 'l',
@@ -113,38 +119,6 @@ fn test() {
 
     assert_eq!(b.Version, b2.Version);
     assert_eq!(b.DefaultMail, b2.DefaultMail);
-    /*
-    // let pubkey = fs::read(pkey_file).unwrap();
-    let mut f = fs::File::open(&pub_file).unwrap();
-    //.context("Trying to load pkey fron config")?;
-    let pk = SignedPublicKey::from_bytes(f).unwrap();
-
-    let msg = Message::new_literal("none", "hogehoge");
-
-    let mut rng = StdRng::from_entropy();
-    let new_msg = msg
-        .encrypt_to_keys(&mut rng, PublicKeyAlgorithm::EdDSA, &[&pk])
-        .unwrap();
-    print!("Encoded: \n{}", new_msg.to_armored_string(None).unwrap());
-
-    let mut g = fs::File::open(&priv_file).unwrap();
-    let skey = SignedSecretKey::from_bytes(g).unwrap();
-
-    let buf = new_msg.to_armored_string(None).unwrap();
-    let (msg2, _) = Message::from_string(&buf).unwrap();
-    let (decryptor, _) = msg2
-        .decrypt(|| String::from("none"), &[&skey])
-        .expect("Decrypting the message");
-
-        for msg3 in decryptor {
-            let bytes = msg3.unwrap().get_content().unwrap();
-            println!("Decoded: {:?}", bytes);
-            let clear = String::from_utf8(bytes.unwrap()).unwrap();
-            if String::len(&clear) > 0 {
-                println!("{}", clear);
-            }
-        }
-        */
 }
 
 fn generate_pass(len: u64) -> String {
@@ -174,7 +148,7 @@ fn send2clipboard(pass: &String) {
 
 fn main() {
     env_logger::init();
-    info!("Baccounts: KISS Password Manager");
+    info!("Baccounts: 💋 Password Manager");
 
     let confd = xdg::BaseDirectories::with_prefix("baccounts").unwrap();
     let cli = Cli::parse();
@@ -247,7 +221,6 @@ fn main() {
             p2.update_site(s2);
             b.update_profile(p2).expect("Updating password ok");
 
-            //b.update_profile(&p, &s, pass).expect("Updating password");
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
             b.to_file(&profile_name, &tmpfile);
             std::fs::rename(tmpfile, datafile.clone()).expect("Renaming file");
