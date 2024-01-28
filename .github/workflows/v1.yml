@@ -1,4 +1,4 @@
-name: Go Testing
+name: Baccounts v1 testing
 
 on:
     push:

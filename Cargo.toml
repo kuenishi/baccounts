@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pgp = "0.10"
 log = "*"
 env_logger = "*"
 clap = { version = "*", features=["derive"] }
@@ -14,3 +13,5 @@ xdg = "*"
 rand = "*"
 serde = { version = "*", features=["derive"] }
 serde_json = {version = "*"}
+arboard = "3"
+url = "2.5"
