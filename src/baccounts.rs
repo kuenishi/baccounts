@@ -31,7 +31,7 @@ pub struct Profile {
 }
 
 impl Profile {
-    fn new(name: &String) -> Self {
+    pub fn new(name: &String) -> Self {
         Profile {
             Name: name.clone(),
             Sites: HashMap::new(),
@@ -106,6 +106,7 @@ impl Baccounts {
     }
 
     // Test purpose
+    #[allow(dead_code)]
     pub fn from_raw_file(filename: &PathBuf) -> Self {
         let file = match fs::File::open(filename) {
             Ok(f) => f,
@@ -178,6 +179,7 @@ impl Baccounts {
     }
 
     // Test purpose
+    #[allow(dead_code)]
     pub fn to_raw_file(&self, filename: &PathBuf) {
         let file = match fs::File::create(filename) {
             Ok(f) => f,
