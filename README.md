@@ -11,7 +11,6 @@ Internet account (password) manager, with following goals:
 Under following assumptions or limitations
 
 * Trust Rust standard library
-* No GUI
 * [on gpg-agent error of pinentry](https://wiki.archlinuxjp.org/index.php/GnuPG#gpg-agent)
 
 # Build and install
@@ -19,6 +18,15 @@ Under following assumptions or limitations
 ```sh
 $ cargo install
 ```
+
+`pinentry` must be configured as GUI-based. Make sure that `pinentry-gtk-2` or such says "OK Pleased to meet you".
+
+```sh
+$ pinentry-gtk-2
+OK Pleased to meet you
+
+```
+
 
 # Changes from version 1
 
