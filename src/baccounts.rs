@@ -88,6 +88,14 @@ impl Baccounts {
     }
 
     pub fn from_file(filename: &PathBuf) -> Self {
+        debug!("gpg --decrypt {}", filename.display());
+        if !filename.as_path().try_exists().unwrap() {
+            error!(
+                "The encrypted pass file {} does not exist.",
+                filename.display()
+            );
+            std::process::exit(1);
+        }
         match std::process::Command::new("gpg")
             .arg("--decrypt")
             .arg(filename)
