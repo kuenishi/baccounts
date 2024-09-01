@@ -5,7 +5,6 @@ extern crate log;
 use xdg;
 
 use rand::distributions::DistString;
-use rand::seq::SliceRandom;
 
 use arboard::Clipboard;
 #[cfg(target_os = "linux")]
