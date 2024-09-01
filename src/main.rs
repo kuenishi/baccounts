@@ -4,8 +4,8 @@ use env_logger;
 extern crate log;
 use xdg;
 
-use rand::seq::SliceRandom;
 use rand::distributions::DistString;
+use rand::seq::SliceRandom;
 
 use arboard::Clipboard;
 #[cfg(target_os = "linux")]
@@ -229,7 +229,7 @@ fn main() {
                 Some(s) => {
                     error!("Site found ({}). Cannot generate password.", s.Name);
                     std::process::exit(1)
-                },
+                }
                 None => {
                     debug!("No site found. Ok to generate.")
                 }
@@ -243,12 +243,10 @@ fn main() {
                 EncodedPass: pass,
                 Mail: mail,
             };
-            debug!("{:?}", site);
-
             let mut p2 = p.clone();
             p2.update_site(site);
 
-            b.update_profile(p2).expect("Updating password ok");
+            b.update_profile(p2).expect("Failed updating password");
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
             b.to_file(&profile_name, &tmpfile);
