@@ -5,6 +5,7 @@ extern crate log;
 use xdg;
 
 use rand::seq::SliceRandom;
+use rand::distributions::DistString;
 
 use arboard::Clipboard;
 #[cfg(target_os = "linux")]
@@ -61,7 +62,7 @@ enum SubCommands {
             short = 'l',
             long = "len",
             required = false,
-            default_value = "8",
+            default_value = "512",
             value_parser = clap::value_parser!(u64),
         )]
         len: u64,
@@ -131,13 +132,10 @@ fn test() {
 
 fn generate_pass(len: u64) -> String {
     info!("Generating password with length {}", len);
-    let printable_chars: Vec<char> = (32..127).map(|c| c as u8 as char).collect();
+    let printable_chars = rand::distributions::Alphanumeric;
     let mut rng = rand::thread_rng();
 
-    let pass: String = printable_chars
-        .choose_multiple(&mut rng, len as usize)
-        .collect();
-
+    let pass: String = printable_chars.sample_string(&mut rng, len as usize);
     debug!("Password generated: {} chars", pass.chars().count());
     pass
 }
@@ -217,8 +215,48 @@ fn main() {
                 "Generating password for site {} with user {}, length={}",
                 url, mail, len
             );
-            unimplemented!();
+            let datafile = confd.get_config_file("baccounts.json.asc");
+
+            let mut b = Baccounts::from_file(&datafile);
+            let Some(p) = b.find_profile(&cli.profile) else {
+                error!("Profile not found: {}", cli.profile);
+                std::process::exit(1);
+            };
+            let profile_name = p.Name.clone();
+            debug!("Profile found: {}", p.Name);
+
+            match p.find_site(&url) {
+                Some(s) => {
+                    error!("Site found ({}). Cannot generate password.", s.Name);
+                    std::process::exit(1)
+                },
+                None => {
+                    debug!("No site found. Ok to generate.")
+                }
+            };
+
+            let name = url::Url::parse(&url).expect("Failed to parse --url");
+            let pass = generate_pass(len);
+            let site = baccounts::Site {
+                Url: url,
+                Name: name.host_str().unwrap().to_string(),
+                EncodedPass: pass,
+                Mail: mail,
+            };
+            debug!("{:?}", site);
+
+            let mut p2 = p.clone();
+            p2.update_site(site);
+
+            b.update_profile(p2).expect("Updating password ok");
+
+            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
+            b.to_file(&profile_name, &tmpfile);
+            std::fs::rename(tmpfile, datafile.clone()).expect("Renaming file");
+            info!("New password saved to {}", datafile.display());
+            //send2clipboard(&pass);
         }
+
         SubCommands::Update { len, site } => {
             debug!("Updating password for site {} length={}", site, len);
             let datafile = confd.get_config_file("baccounts.json.asc");
