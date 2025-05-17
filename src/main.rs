@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use env_logger;
 
 use log::{info, debug, error};
@@ -105,7 +105,7 @@ fn test() -> anyhow::Result<()> {
     b.DefaultMail = "dummy mail".to_string();
     let testfile = &std::path::PathBuf::from("/tmp/baccounts-test.json.asc");
     let profile_name = "kuenishi";
-    b.to_file(&profile_name.to_string(), testfile);
+    b.to_file(&profile_name.to_string(), testfile)?;
 
     let b2: Baccounts = match std::process::Command::new("gpg")
         .arg("--decrypt")
@@ -152,6 +152,7 @@ fn main() -> anyhow::Result<()> {
     info!("Baccounts: 💋 Password Manager");
 
     let confd = xdg::BaseDirectories::with_prefix("baccounts")?;
+    let datafile = confd.get_config_file("baccounts.json.asc");
     let cli = Cli::parse();
 
     info!("Using profile '{}' (or default for empty)", cli.profile);
@@ -161,7 +162,6 @@ fn main() -> anyhow::Result<()> {
         SubCommands::AddProfile { name } => {
             debug!("Adding profile: {}", name);
             let p = Profile::new(&name);
-            let datafile = confd.get_config_file("baccounts.json.asc");
             let b = Baccounts::from_file(&datafile)?;
             match b.find_profile(&name) {
                 Some(_) =>
@@ -177,8 +177,6 @@ fn main() -> anyhow::Result<()> {
         }
         SubCommands::Show { site } => {
             debug!("Showing site: {}", site);
-            let datafile = confd.get_config_file("baccounts.json.asc");
-
             let b = Baccounts::from_file(&datafile)?;
             let p = b.find_profile(&cli.profile).context("profile not found")?;
             debug!("Profile found: {}", p.Name);
@@ -194,8 +192,6 @@ fn main() -> anyhow::Result<()> {
         }
         SubCommands::List => {
             debug!("Listing sites");
-            let datafile = confd.get_config_file("baccounts.json.asc");
-
             let b = Baccounts::from_file(&datafile)?;
             b.list();
             Ok(())
@@ -205,8 +201,6 @@ fn main() -> anyhow::Result<()> {
                 "Generating password for site {} with user {}, length={}",
                 url, mail, len
             );
-            let datafile = confd.get_config_file("baccounts.json.asc");
-
             let mut b = Baccounts::from_file(&datafile)?;
             let p = b.find_profile(&cli.profile).context("profile not found")?;
             let profile_name = p.Name.clone();
@@ -231,12 +225,11 @@ fn main() -> anyhow::Result<()> {
             b.update_profile(p2).expect("Failed updating password");
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
-            b.to_file(&profile_name, &tmpfile);
+            b.to_file(&profile_name, &tmpfile)?;
             Ok(std::fs::rename(tmpfile, datafile.clone())?)
         }
         SubCommands::Update { len, site } => {
             debug!("Updating password for site {} length={}", site, len);
-            let datafile = confd.get_config_file("baccounts.json.asc");
 
             let mut b = Baccounts::from_file(&datafile)?;
             let p = b.find_profile(&cli.profile).context("profile not found")?;
@@ -258,7 +251,7 @@ fn main() -> anyhow::Result<()> {
             b.update_profile(p2).context("Updating password ok")?;
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
-            b.to_file(&profile_name, &tmpfile);
+            b.to_file(&profile_name, &tmpfile)?;
             Ok(std::fs::rename(tmpfile, datafile.clone())?)
             //send2clipboard(&pass);
         }
