@@ -1,8 +1,9 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use env_logger;
-#[macro_use]
-extern crate log;
+
+use log::{info, debug, error};
 use xdg;
+use anyhow::Context;
 
 use rand::distributions::DistString;
 
@@ -26,7 +27,6 @@ struct Cli {
         short = 'p',
         long = "profile",
         required = false,
-        //value_name = "",
         default_value = "",
     )]
     profile: String,
@@ -93,17 +93,11 @@ enum SubCommands {
     },
 }
 
-#[derive(Debug, Clone, ValueEnum)]
-enum Format {
-    Csv,
-    Json,
-}
-
 mod baccounts;
 use baccounts::Baccounts;
 use baccounts::Profile;
 
-fn test() {
+fn test() -> anyhow::Result<()> {
     info!("Testing the encryption & decryption environment...");
 
     let mut b = Baccounts::new();
@@ -127,6 +121,7 @@ fn test() {
 
     assert_eq!(b.Version, b2.Version);
     assert_eq!(b.DefaultMail, b2.DefaultMail);
+    Ok(())
 }
 
 fn generate_pass(len: u64) -> String {
@@ -139,7 +134,7 @@ fn generate_pass(len: u64) -> String {
     pass
 }
 
-fn send2clipboard(pass: &String) {
+fn send2clipboard(pass: &String) -> anyhow::Result<()> {
     debug!("Password is being copied to the clipboard until the process ends");
     /*
           While the pass is in the clipboard, the user can paste it.
@@ -149,13 +144,14 @@ fn send2clipboard(pass: &String) {
     */
     println!("Password should now be in clipboard. Waiting for termination...");
     let _ = Clipboard::new().unwrap().set().wait().text(pass.clone());
+    Ok(())
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
     info!("Baccounts: 💋 Password Manager");
 
-    let confd = xdg::BaseDirectories::with_prefix("baccounts").unwrap();
+    let confd = xdg::BaseDirectories::with_prefix("baccounts")?;
     let cli = Cli::parse();
 
     info!("Using profile '{}' (or default for empty)", cli.profile);
@@ -166,18 +162,16 @@ fn main() {
             debug!("Adding profile: {}", name);
             let p = Profile::new(&name);
             let datafile = confd.get_config_file("baccounts.json.asc");
-            let b = Baccounts::from_file(&datafile);
+            let b = Baccounts::from_file(&datafile)?;
             match b.find_profile(&name) {
-                Some(_) => {
-                    error!("Profile already exists: {}", name);
-                    std::process::exit(1);
-                }
-                None => {
+                Some(_) =>
+                    anyhow::bail!("Profile already exists: {}", name),
+                None => { // TODO: Make sure this is notfound
                     info!("Adding new profile: {:?}", p);
                     unimplemented!();
-                    //b.add_profile(p);
-                    //b.to_file(&name, &datafile);
-                    //info!("New profile saved to {}", datafile.display());
+                //b.add_profile(p);
+                //b.to_file(&name, &datafile);
+                //info!("New profile saved to {}", datafile.display());
                 }
             }
         }
@@ -185,29 +179,26 @@ fn main() {
             debug!("Showing site: {}", site);
             let datafile = confd.get_config_file("baccounts.json.asc");
 
-            let b = Baccounts::from_file(&datafile);
-            let Some(p) = b.find_profile(&cli.profile) else {
-                error!("Profile not found: {}", cli.profile);
-                std::process::exit(1);
-            };
+            let b = Baccounts::from_file(&datafile)?;
+            let p = b.find_profile(&cli.profile).context("profile not found")?;
             debug!("Profile found: {}", p.Name);
 
             let Some(s) = p.find_site(&site) else {
-                error!("Site not found: {}", site);
-                std::process::exit(1);
+                anyhow::bail!("Site not found: {}", site);
             };
             info!(
                 "Password for {} ({}, {}) is being copied to the clipboard",
                 s.Url, s.Name, s.Mail
             );
-            send2clipboard(&s.EncodedPass);
+            send2clipboard(&s.EncodedPass)
         }
         SubCommands::List => {
             debug!("Listing sites");
             let datafile = confd.get_config_file("baccounts.json.asc");
 
-            let b = Baccounts::from_file(&datafile);
+            let b = Baccounts::from_file(&datafile)?;
             b.list();
+            Ok(())
         }
         SubCommands::Generate { len, mail, url } => {
             info!(
@@ -216,23 +207,15 @@ fn main() {
             );
             let datafile = confd.get_config_file("baccounts.json.asc");
 
-            let mut b = Baccounts::from_file(&datafile);
-            let Some(p) = b.find_profile(&cli.profile) else {
-                error!("Profile not found: {}", cli.profile);
-                std::process::exit(1);
-            };
+            let mut b = Baccounts::from_file(&datafile)?;
+            let p = b.find_profile(&cli.profile).context("profile not found")?;
             let profile_name = p.Name.clone();
             debug!("Profile found: {}", p.Name);
 
-            match p.find_site(&url) {
-                Some(s) => {
-                    error!("Site found ({}). Cannot generate password.", s.Name);
-                    std::process::exit(1)
-                }
-                None => {
-                    debug!("No site found. Ok to generate.")
-                }
-            };
+            if let Some(s) = p.find_site(&url) {
+                error!("Site found ({}). Cannot generate password.", s.Name);
+                anyhow::bail!("site found");
+            }
 
             let name = url::Url::parse(&url).expect("Failed to parse --url");
             let pass = generate_pass(len);
@@ -249,27 +232,18 @@ fn main() {
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
             b.to_file(&profile_name, &tmpfile);
-            std::fs::rename(tmpfile, datafile.clone()).expect("Renaming file");
-            info!("New password saved to {}", datafile.display());
-            //send2clipboard(&pass);
+            Ok(std::fs::rename(tmpfile, datafile.clone())?)
         }
-
         SubCommands::Update { len, site } => {
             debug!("Updating password for site {} length={}", site, len);
             let datafile = confd.get_config_file("baccounts.json.asc");
 
-            let mut b = Baccounts::from_file(&datafile);
-            let Some(p) = b.find_profile(&cli.profile) else {
-                error!("Profile not found: {}", cli.profile);
-                std::process::exit(1);
-            };
+            let mut b = Baccounts::from_file(&datafile)?;
+            let p = b.find_profile(&cli.profile).context("profile not found")?;
             let profile_name = p.Name.clone();
             debug!("Profile found: {}", p.Name);
 
-            let Some(s) = p.find_site(&site) else {
-                error!("Site not found: {}", site);
-                std::process::exit(1);
-            };
+            let s = p.find_site(&site).context("site not found")?;
             info!(
                 "Site found. Updating password for {} ({}, {})",
                 s.Url, s.Name, s.Mail
@@ -281,12 +255,11 @@ fn main() {
             s2.update_pass(pass);
             let mut p2 = p.clone();
             p2.update_site(s2);
-            b.update_profile(p2).expect("Updating password ok");
+            b.update_profile(p2).context("Updating password ok")?;
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
             b.to_file(&profile_name, &tmpfile);
-            std::fs::rename(tmpfile, datafile.clone()).expect("Renaming file");
-            info!("New password saved to {}", datafile.display());
+            Ok(std::fs::rename(tmpfile, datafile.clone())?)
             //send2clipboard(&pass);
         }
     }

@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use url::Url;
+use log::{debug, error};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(non_snake_case)]
@@ -87,7 +88,7 @@ impl Baccounts {
         }
     }
 
-    pub fn from_file(filename: &PathBuf) -> Self {
+    pub fn from_file(filename: &PathBuf) -> anyhow::Result<Self> {
         debug!("gpg --decrypt {}", filename.display());
         if !filename.as_path().try_exists().unwrap() {
             error!(
@@ -102,13 +103,11 @@ impl Baccounts {
             .output()
         {
             Ok(cmd_output) => {
-                let baccounts: Baccounts =
-                    serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file");
-                baccounts
+                Ok(serde_json::from_slice(&cmd_output.stdout)?)
             }
             Err(e) => {
                 error!("Can't decrypt file {}: {}", filename.display(), e);
-                std::process::exit(1);
+                Err(e.into())
             }
         }
     }
@@ -160,6 +159,7 @@ impl Baccounts {
         None
     }
 
+    //pub fn to_file(&self, name: &String, filename: &PathBuf) -> anyhow::Result<()> {
     pub fn to_file(&self, name: &String, filename: &PathBuf) {
         let enc = std::process::Command::new("gpg")
             .arg("--encrypt")
