@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use log::{debug, error};
+use log::{debug, error, info};
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -16,10 +16,51 @@ pub struct Site {
     pub Mail: String,
 }
 
+macro_rules! diff_string {
+    ( $n:ident, $s:expr, $l:expr, $r:expr, $c:ident ) => {
+        if $l.$n != $r.$n {
+            if $s != "EncodedPass" {
+                error!("{} mismatch at {}: {} != {}", $s, $l.Url, $l.$n, $r.$n);
+            } else {
+                error!(
+                    "{} mismatch at {}: ({} bytes) != ({} bytes)",
+                    $s,
+                    $l.Url,
+                    $l.$n.len(),
+                    $r.$n.len()
+                );
+            }
+            $c += 1;
+        } else {
+            debug!("{} ok", $s);
+        }
+    };
+}
+
 impl Site {
     pub fn update_pass(&mut self, pass: String) -> &mut Self {
         self.EncodedPass = pass;
         self
+    }
+
+    pub fn diff(&self, rhs: &Site, left: &PathBuf, right: &PathBuf) -> anyhow::Result<usize> {
+        let mut count = 0;
+        diff_string!(Url, "Url", self, rhs, count);
+        diff_string!(Name, "Name", self, rhs, count);
+        diff_string!(EncodedPass, "EncodedPass", self, rhs, count);
+        diff_string!(Mail, "Mail", self, rhs, count);
+        if count > 0 {
+            println!("File\t| {:?} \t| {:?} \t|", left.display(), right.display());
+            println!("Url \t| {} \t| {} \t|", self.Url, rhs.Url);
+            println!("Name \t| {} \t\t| {} \t\t|", self.Name, rhs.Name);
+            println!(
+                "Pass \t| ({} bytes) \t\t| ({} bytes) \t\t|",
+                self.EncodedPass.len(),
+                rhs.EncodedPass.len()
+            );
+            println!("Mail \t| {} \t| {} \t|", self.Mail, rhs.Mail);
+        }
+        Ok(count)
     }
 }
 
@@ -68,6 +109,39 @@ impl Profile {
     pub fn update_site(&mut self, site: Site) {
         let url = Url::parse(site.Url.as_str()).expect("Unable to parse URL");
         self.Sites.insert(url.host().unwrap().to_string(), site);
+    }
+
+    pub fn diff(&self, rhs: &Profile, left: &PathBuf, right: &PathBuf) -> anyhow::Result<usize> {
+        let mut count = 0;
+        let mut site_names = HashSet::new();
+        for k in self.Sites.keys() {
+            site_names.insert(k.clone());
+        }
+        for k in rhs.Sites.keys() {
+            site_names.insert(k.clone());
+        }
+        for name in site_names {
+            debug!("Comparing site {}: ", name);
+            match (self.Sites.get(&name), rhs.Sites.get(&name)) {
+                (Some(l), Some(r)) => {
+                    // TODO: check difference
+                    info!("Site {} found in both side", name);
+                    count += l.diff(&r, &left, &right)?;
+                }
+                (Some(_), None) => {
+                    error!("Site {} not found in {}", name, right.display());
+                    count += 1;
+                }
+                (None, Some(_)) => {
+                    error!("Site {} not found in {}", name, left.display());
+                    count += 1;
+                }
+                (None, None) => {
+                    anyhow::bail!("heh :P");
+                }
+            };
+        }
+        Ok(count)
     }
 }
 
@@ -168,6 +242,53 @@ impl Baccounts {
     pub fn to_raw_file(&self, filename: &PathBuf) -> anyhow::Result<()> {
         let data = serde_json::to_string(&self)?;
         Ok(fs::write(filename, data)?)
+    }
+
+    pub fn diff(&self, rhs: &Baccounts, left: &PathBuf, right: &PathBuf) -> anyhow::Result<usize> {
+        let mut count = 0;
+        if self.Version != rhs.Version {
+            error!("Version mismatch: {} != {}", self.Version, rhs.Version);
+            count += 1;
+        } else {
+            debug!("Version ok: {}", self.Version);
+        }
+        if self.DefaultMail != rhs.DefaultMail {
+            error!("DefaultMail mismatch: {} != {}", self.DefaultMail, rhs.DefaultMail);
+            count += 1;
+        } else {
+            debug!("DefaultMail ok: {}", self.DefaultMail);
+        }
+
+        let mut profile_names = HashSet::new();
+        for p in &self.Profiles {
+            profile_names.insert(p.Name.clone());
+        }
+        for p in &rhs.Profiles {
+            profile_names.insert(p.Name.clone());
+        }
+
+        for name in profile_names {
+            println!("Comparing profile {}", name);
+
+            match (self.find_profile(&name), rhs.find_profile(&name)) {
+                (Some(l), Some(r)) => {
+                    info!("Profile {} found in both side", name);
+                    count += l.diff(&r, &left, &right)?;
+                }
+                (Some(_), None) => {
+                    error!("Profile {} not found in {}", name, right.display());
+                    count += 1;
+                }
+                (None, Some(_)) => {
+                    error!("Profile {} not found in {}", name, left.display());
+                    count += 1;
+                }
+                (None, None) => {
+                    anyhow::bail!("heh :P");
+                }
+            };
+        }
+        Ok(count)
     }
 }
 

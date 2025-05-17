@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use env_logger;
 
@@ -82,6 +84,15 @@ enum SubCommands {
         // num_only: bool
         #[clap(long = "site", required = true)]
         site: String,
+    },
+    Diff {
+        /// Source file to compare (default: .config/baccounts..)
+        #[clap(long)]
+        lhs: Option<String>,
+
+        /// Target file to compare (typically backup file)
+        #[clap(long, required = true)]
+        rhs: String,
     },
 }
 
@@ -238,6 +249,18 @@ fn main() -> anyhow::Result<()> {
             b.to_file(&profile_name, &tmpfile)?;
             Ok(std::fs::rename(tmpfile, datafile.clone())?)
             //send2clipboard(&pass);
+        }
+        SubCommands::Diff { lhs, rhs } => {
+            let lhs = match lhs {
+                Some(f) => PathBuf::from(f),
+                None => datafile,
+            };
+            let rhs = PathBuf::from(rhs.clone());
+            let b0 = Baccounts::from_file(&lhs)?;
+            let b1 = Baccounts::from_file(&rhs)?;
+            info!("read: {} vs {}", lhs.display(), rhs.display());
+            let _count = b0.diff(&b1, &lhs, &rhs);
+            Ok(())
         }
     }
 }
