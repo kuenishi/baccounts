@@ -72,10 +72,7 @@ enum SubCommands {
         url: String,
     },
 
-    #[clap(
-        arg_required_else_help = true,
-        about = "Update password and save it to the profile"
-    )]
+    #[clap(arg_required_else_help = true, about = "Update password and save it to the profile")]
     Update {
         #[clap(
             short = 'l',
@@ -113,11 +110,7 @@ fn test() {
     let profile_name = "kuenishi";
     b.to_file(&profile_name.to_string(), testfile);
 
-    let b2: Baccounts = match std::process::Command::new("gpg")
-        .arg("--decrypt")
-        .arg(testfile)
-        .output()
-    {
+    let b2: Baccounts = match std::process::Command::new("gpg").arg("--decrypt").arg(testfile).output() {
         Ok(cmd_output) => serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file"),
         Err(e) => {
             error!("Can't decrypt file {}: {}", profile_name, e);
@@ -210,10 +203,7 @@ fn main() {
             b.list();
         }
         SubCommands::Generate { len, mail, url } => {
-            info!(
-                "Generating password for site {} with user {}, length={}",
-                url, mail, len
-            );
+            info!("Generating password for site {} with user {}, length={}", url, mail, len);
             let datafile = confd.get_config_file("baccounts.json.asc");
 
             let mut b = Baccounts::from_file(&datafile);
@@ -270,10 +260,7 @@ fn main() {
                 error!("Site not found: {}", site);
                 std::process::exit(1);
             };
-            info!(
-                "Site found. Updating password for {} ({}, {})",
-                s.Url, s.Name, s.Mail
-            );
+            info!("Site found. Updating password for {} ({}, {})", s.Url, s.Name, s.Mail);
 
             let pass = generate_pass(len);
 

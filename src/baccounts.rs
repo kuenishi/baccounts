@@ -90,20 +90,12 @@ impl Baccounts {
     pub fn from_file(filename: &PathBuf) -> Self {
         debug!("gpg --decrypt {}", filename.display());
         if !filename.as_path().try_exists().unwrap() {
-            error!(
-                "The encrypted pass file {} does not exist.",
-                filename.display()
-            );
+            error!("The encrypted pass file {} does not exist.", filename.display());
             std::process::exit(1);
         }
-        match std::process::Command::new("gpg")
-            .arg("--decrypt")
-            .arg(filename)
-            .output()
-        {
+        match std::process::Command::new("gpg").arg("--decrypt").arg(filename).output() {
             Ok(cmd_output) => {
-                let baccounts: Baccounts =
-                    serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file");
+                let baccounts: Baccounts = serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file");
                 baccounts
             }
             Err(e) => {
@@ -171,8 +163,7 @@ impl Baccounts {
             .spawn()
             .expect("Unable to launch gpg");
 
-        serde_json::to_writer_pretty(enc.stdin.as_ref().unwrap(), &self)
-            .expect("Unable to write file");
+        serde_json::to_writer_pretty(enc.stdin.as_ref().unwrap(), &self).expect("Unable to write file");
         let output = enc.wait_with_output().expect("Unable to wait for gpg");
 
         let mut file = match fs::File::create(filename) {
@@ -182,8 +173,7 @@ impl Baccounts {
                 std::process::exit(1);
             }
         };
-        file.write_all(&output.stdout)
-            .expect("Unable to write file");
+        file.write_all(&output.stdout).expect("Unable to write file");
     }
 
     // Test purpose
