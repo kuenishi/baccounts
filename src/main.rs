@@ -139,8 +139,10 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
     info!("Baccounts: 💋 Password Manager");
 
-    let confd = xdg::BaseDirectories::with_prefix("baccounts")?;
-    let datafile = confd.get_config_file("baccounts.json.asc");
+    let confd = xdg::BaseDirectories::with_prefix("baccounts");
+    let datafile = confd
+        .get_config_file("baccounts.json.asc")
+        .context("encoded file not found")?;
     let cli = Cli::parse();
 
     info!("Using profile '{}' (or default for empty)", cli.profile);
@@ -209,7 +211,7 @@ fn main() -> anyhow::Result<()> {
 
             b.update_profile(p2).expect("Failed updating password");
 
-            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
+            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc").context("tempfile")?;
             b.to_file(&profile_name, &tmpfile)?;
             Ok(std::fs::rename(tmpfile, datafile.clone())?)
         }
@@ -232,7 +234,7 @@ fn main() -> anyhow::Result<()> {
             p2.update_site(s2);
             b.update_profile(p2).context("Updating password ok")?;
 
-            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
+            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc").context("tmpfile")?;
             b.to_file(&profile_name, &tmpfile)?;
             Ok(std::fs::rename(tmpfile, datafile.clone())?)
             //send2clipboard(&pass);
