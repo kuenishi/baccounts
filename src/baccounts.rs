@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
 
+use anyhow::Context;
+use log::{debug, error};
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -87,44 +88,26 @@ impl Baccounts {
         }
     }
 
-    pub fn from_file(filename: &PathBuf) -> Self {
+    pub fn from_file(filename: &PathBuf) -> anyhow::Result<Self> {
         debug!("gpg --decrypt {}", filename.display());
-        if !filename.as_path().try_exists().unwrap() {
-            error!(
-                "The encrypted pass file {} does not exist.",
-                filename.display()
-            );
-            std::process::exit(1);
-        }
-        match std::process::Command::new("gpg")
-            .arg("--decrypt")
-            .arg(filename)
-            .output()
-        {
-            Ok(cmd_output) => {
-                let baccounts: Baccounts =
-                    serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file");
-                baccounts
-            }
-            Err(e) => {
-                error!("Can't decrypt file {}: {}", filename.display(), e);
-                std::process::exit(1);
-            }
-        }
+
+        let path = filename.as_path();
+        anyhow::ensure!(
+            path.exists(),
+            format!("The encrypted pass file {} does not exist.", filename.display())
+        );
+
+        let cmd_output = std::process::Command::new("gpg").arg("--decrypt").arg(filename).output()?;
+
+        Ok(serde_json::from_slice(&cmd_output.stdout)?)
     }
 
     // Test purpose
     #[allow(dead_code)]
-    pub fn from_raw_file(filename: &PathBuf) -> Self {
-        let file = match fs::File::open(filename) {
-            Ok(f) => f,
-            Err(e) => {
-                error!("Can't open file {}: {}", filename.display(), e);
-                std::process::exit(1);
-            }
-        };
-        let baccounts: Baccounts = serde_json::from_reader(&file).expect("Unable to parse file");
-        baccounts
+    pub fn from_raw_file(filename: &PathBuf) -> anyhow::Result<Self> {
+        let data = fs::read_to_string(filename)?;
+        let baccounts: Baccounts = serde_json::from_str(&data).context("Unable to parse file")?;
+        Ok(baccounts)
     }
 
     pub fn list(&self) {
@@ -160,7 +143,8 @@ impl Baccounts {
         None
     }
 
-    pub fn to_file(&self, name: &String, filename: &PathBuf) {
+    pub fn to_file(&self, name: &String, filename: &PathBuf) -> anyhow::Result<()> {
+        //pub fn to_file(&self, name: &String, filename: &PathBuf) -> {
         let enc = std::process::Command::new("gpg")
             .arg("--encrypt")
             .arg("--armor")
@@ -168,35 +152,22 @@ impl Baccounts {
             .arg(name)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
-            .spawn()
-            .expect("Unable to launch gpg");
+            .spawn()?;
 
-        serde_json::to_writer_pretty(enc.stdin.as_ref().unwrap(), &self)
-            .expect("Unable to write file");
-        let output = enc.wait_with_output().expect("Unable to wait for gpg");
-
-        let mut file = match fs::File::create(filename) {
-            Ok(f) => f,
-            Err(e) => {
-                error!("Can't open file {}: {}", filename.display(), e);
-                std::process::exit(1);
-            }
+        match enc.stdin.as_ref() {
+            Some(stdin) => serde_json::to_writer_pretty(stdin, &self)?,
+            None => anyhow::bail!("Failed to read stdin"),
         };
-        file.write_all(&output.stdout)
-            .expect("Unable to write file");
+        let output = enc.wait_with_output().context("Unable to wait for gpg")?;
+
+        Ok(fs::write(filename, &output.stdout)?)
     }
 
     // Test purpose
     #[allow(dead_code)]
-    pub fn to_raw_file(&self, filename: &PathBuf) {
-        let file = match fs::File::create(filename) {
-            Ok(f) => f,
-            Err(e) => {
-                error!("Can't open file {}: {}", filename.display(), e);
-                std::process::exit(1);
-            }
-        };
-        serde_json::to_writer_pretty(file, &self).expect("Unable to write file");
+    pub fn to_raw_file(&self, filename: &PathBuf) -> anyhow::Result<()> {
+        let data = serde_json::to_string(&self)?;
+        Ok(fs::write(filename, data)?)
     }
 }
 
@@ -208,12 +179,13 @@ mod tests {
     //use crate::Baccounts;
 
     #[test]
-    fn test_smoke() {
+    fn test_smoke() -> anyhow::Result<()> {
         // Write your test case here
         let b = Baccounts::new();
-        b.to_raw_file(&PathBuf::from("/tmp/testfile.json"));
-        let b2 = Baccounts::from_raw_file(&PathBuf::from("/tmp/testfile.json"));
+        b.to_raw_file(&PathBuf::from("/tmp/testfile.json"))?;
+        let b2 = Baccounts::from_raw_file(&PathBuf::from("/tmp/testfile.json"))?;
         assert_eq!(b.Version, b2.Version);
+        Ok(())
     }
 
     // Add more test cases as needed
