@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use url::Url;
 use log::{debug, error};
+use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(non_snake_case)]
@@ -92,14 +92,12 @@ impl Baccounts {
         debug!("gpg --decrypt {}", filename.display());
 
         let path = filename.as_path();
-        anyhow::ensure!(path.exists(), format!("The encrypted pass file {} does not exist.",
-                filename.display()
-        ));
+        anyhow::ensure!(
+            path.exists(),
+            format!("The encrypted pass file {} does not exist.", filename.display())
+        );
 
-        let cmd_output = std::process::Command::new("gpg")
-            .arg("--decrypt")
-            .arg(filename)
-            .output()?;
+        let cmd_output = std::process::Command::new("gpg").arg("--decrypt").arg(filename).output()?;
 
         Ok(serde_json::from_slice(&cmd_output.stdout)?)
     }
@@ -146,7 +144,7 @@ impl Baccounts {
     }
 
     pub fn to_file(&self, name: &String, filename: &PathBuf) -> anyhow::Result<()> {
-    //pub fn to_file(&self, name: &String, filename: &PathBuf) -> {
+        //pub fn to_file(&self, name: &String, filename: &PathBuf) -> {
         let enc = std::process::Command::new("gpg")
             .arg("--encrypt")
             .arg("--armor")
@@ -158,7 +156,7 @@ impl Baccounts {
 
         match enc.stdin.as_ref() {
             Some(stdin) => serde_json::to_writer_pretty(stdin, &self)?,
-            None => anyhow::bail!("Failed to read stdin")
+            None => anyhow::bail!("Failed to read stdin"),
         };
         let output = enc.wait_with_output().context("Unable to wait for gpg")?;
 

@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
 use env_logger;
 
-use log::{info, debug, error};
-use xdg;
 use anyhow::Context;
+use log::{debug, error, info};
+use xdg;
 
 use rand::distributions::DistString;
 
@@ -23,12 +23,7 @@ struct Cli {
     #[clap(subcommand)]
     subcommand: SubCommands,
     /// The name of profile
-    #[clap(
-        short = 'p',
-        long = "profile",
-        required = false,
-        default_value = "",
-    )]
+    #[clap(short = 'p', long = "profile", required = false, default_value = "")]
     profile: String,
 }
 
@@ -72,10 +67,7 @@ enum SubCommands {
         url: String,
     },
 
-    #[clap(
-        arg_required_else_help = true,
-        about = "Update password and save it to the profile"
-    )]
+    #[clap(arg_required_else_help = true, about = "Update password and save it to the profile")]
     Update {
         #[clap(
             short = 'l',
@@ -107,11 +99,7 @@ fn test() -> anyhow::Result<()> {
     let profile_name = "kuenishi";
     b.to_file(&profile_name.to_string(), testfile)?;
 
-    let b2: Baccounts = match std::process::Command::new("gpg")
-        .arg("--decrypt")
-        .arg(testfile)
-        .output()
-    {
+    let b2: Baccounts = match std::process::Command::new("gpg").arg("--decrypt").arg(testfile).output() {
         Ok(cmd_output) => serde_json::from_slice(&cmd_output.stdout).expect("Unable to parse file"),
         Err(e) => {
             error!("Can't decrypt file {}: {}", profile_name, e);
@@ -164,14 +152,14 @@ fn main() -> anyhow::Result<()> {
             let p = Profile::new(&name);
             let b = Baccounts::from_file(&datafile)?;
             match b.find_profile(&name) {
-                Some(_) =>
-                    anyhow::bail!("Profile already exists: {}", name),
-                None => { // TODO: Make sure this is notfound
+                Some(_) => anyhow::bail!("Profile already exists: {}", name),
+                None => {
+                    // TODO: Make sure this is notfound
                     info!("Adding new profile: {:?}", p);
                     unimplemented!();
-                //b.add_profile(p);
-                //b.to_file(&name, &datafile);
-                //info!("New profile saved to {}", datafile.display());
+                    //b.add_profile(p);
+                    //b.to_file(&name, &datafile);
+                    //info!("New profile saved to {}", datafile.display());
                 }
             }
         }
@@ -197,10 +185,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         SubCommands::Generate { len, mail, url } => {
-            info!(
-                "Generating password for site {} with user {}, length={}",
-                url, mail, len
-            );
+            info!("Generating password for site {} with user {}, length={}", url, mail, len);
             let mut b = Baccounts::from_file(&datafile)?;
             let p = b.find_profile(&cli.profile).context("profile not found")?;
             let profile_name = p.Name.clone();
@@ -237,10 +222,7 @@ fn main() -> anyhow::Result<()> {
             debug!("Profile found: {}", p.Name);
 
             let s = p.find_site(&site).context("site not found")?;
-            info!(
-                "Site found. Updating password for {} ({}, {})",
-                s.Url, s.Name, s.Mail
-            );
+            info!("Site found. Updating password for {} ({}, {})", s.Url, s.Name, s.Mail);
 
             let pass = generate_pass(len);
 
