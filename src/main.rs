@@ -91,6 +91,18 @@ enum SubCommands {
         #[clap(long = "site", required = true)]
         site: String,
     },
+    #[clap(
+        arg_required_else_help = true,
+        about = "Make diff of two password-encoded files",
+    )]
+    Diff {
+        /// Left hand side; config file by default
+        #[clap(long)]
+        lhs: Option<String>,
+        /// Right hand side; target file (typically backup file)
+        #[clap(long)]
+        rhs: String,
+    }
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -151,7 +163,7 @@ fn send2clipboard(pass: &String) {
     let _ = Clipboard::new().unwrap().set().wait().text(pass.clone());
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
     info!("Baccounts: 💋 Password Manager");
 
@@ -285,9 +297,51 @@ fn main() {
 
             let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
             b.to_file(&profile_name, &tmpfile);
+            match std::fs::rename(tmpfile, datafile.clone()) {
+                Ok(()) => {
+                    info!("New password saved to {}", datafile.display());
+                    Ok(())
+                },
+                Err(e) => e
+            }
+        }
+        SubCommands::Diff { lhs, rhs } => {
+            debug!("Updating password for site {} length={}", site, len);
+            let lhs = if let Some(filename) = lhs {
+                filename
+            } else {
+                confd.get_config_file("baccounts.json.asc");
+            };
+
+            let mut b = Baccounts::from_file(&datafile);
+            let Some(p) = b.find_profile(&cli.profile) else {
+                error!("Profile not found: {}", cli.profile);
+                std::process::exit(1);
+            };
+            let profile_name = p.Name.clone();
+            debug!("Profile found: {}", p.Name);
+
+            let Some(s) = p.find_site(&site) else {
+                error!("Site not found: {}", site);
+                std::process::exit(1);
+            };
+            info!(
+                "Site found. Updating password for {} ({}, {})",
+                s.Url, s.Name, s.Mail
+            );
+
+            let pass = generate_pass(len);
+
+            let mut s2 = s.clone();
+            s2.update_pass(pass);
+            let mut p2 = p.clone();
+            p2.update_site(s2);
+            b.update_profile(p2).expect("Updating password ok");
+
+            let tmpfile = confd.get_config_file("tmp-baccounts.json.asc");
+            b.to_file(&profile_name, &tmpfile);
             std::fs::rename(tmpfile, datafile.clone()).expect("Renaming file");
             info!("New password saved to {}", datafile.display());
             //send2clipboard(&pass);
-        }
     }
 }
